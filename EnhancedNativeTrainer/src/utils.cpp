@@ -7,7 +7,7 @@ It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 (C) Rob Pridham and fellow contributors 2015
 */
-
+// 更新增强版
 #include "utils.h"
 #include <windows.h>
 #include <psapi.h>
