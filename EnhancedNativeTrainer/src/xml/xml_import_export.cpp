@@ -1,7 +1,7 @@
 /*
-增强版原生训练器项目的一部分。
+Part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include "xml_import_export.h"
@@ -10,26 +10,26 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 
 #include "..\debug\debuglog.h"
 
-// 一个全局的 Windows "基本字符串"。实际内存是由 MSXML 使用的 COM 方法分配的，
-// 这些方法接收 &keyconf_bstr。我们必须在后续使用之前调用 SysFreeString() 
-// 来释放这块内存，以防止内存泄漏。
+// A global Windows "basic string". Actual memory is allocated by the
+// COM methods used by MSXML which take &keyconf_bstr. We must use SysFreeString() 
+// to free this memory before subsequent uses, to prevent a leak.
 BSTR xmlParser_bstr;
 
 bool generate_xml_for_propset(SavedPropSet* props, std::string outputFile)
 {
-	// 创建 XML
+	//Create the XML
 	IXMLDOMDocumentPtr pXMLDoc;
 	HRESULT hr = pXMLDoc.CreateInstance(__uuidof(MSXML2::DOMDocument60));
 	if (FAILED(hr))
 	{
-		write_text_to_log_file("创建 XML 类的实例失败！");
+		write_text_to_log_file("Failed to create the XML class instance");
 		return false;
 	}
 
 	VARIANT_BOOL bIsSuccessful;
 	if (FAILED(pXMLDoc->loadXML(L"<object-set></object-set>", &bIsSuccessful)))
 	{
-		write_text_to_log_file("根节点创建失败！");
+		write_text_to_log_file("Root creation failed");
 		handle_error(pXMLDoc);
 		return false;
 	}
@@ -37,7 +37,7 @@ bool generate_xml_for_propset(SavedPropSet* props, std::string outputFile)
 	IXMLDOMProcessingInstructionPtr pXMLProcessingNode;
 	pXMLDoc->createProcessingInstruction(L"xml", L" version=\"1.0\" encoding=\"UTF-8\"", &pXMLProcessingNode);
 
-	//获取刚刚创建的根元素    
+	//Get the root element just created    
 	IXMLDOMElementPtr pXMLRootElem;
 	pXMLDoc->get_documentElement(&pXMLRootElem);
 
@@ -47,20 +47,17 @@ bool generate_xml_for_propset(SavedPropSet* props, std::string outputFile)
 	vtObject.pdispVal->AddRef();
 	pXMLDoc->insertBefore(pXMLProcessingNode, vtObject, 0);
 
-	//添加一个属性
-	std::wstring wSaveName = ConvertFromUtf8ToUtf16(props->saveName);
-	std::wstring wVersionString = ConvertFromUtf8ToUtf16(VERSION_STRING);
-	pXMLRootElem->setAttribute(L"set-name", _variant_t(wSaveName.c_str()));
-	pXMLRootElem->setAttribute(L"ent-version", _variant_t(wVersionString.c_str()));
+	//Add an attribute
+	pXMLRootElem->setAttribute(L"set-name", _variant_t(props->saveName.c_str()));
+	pXMLRootElem->setAttribute(L"ent-version", _variant_t(VERSION_STRING.c_str()));
 
 	for each (SavedPropDBRow* row in props->items)
 	{
-		//创建子元素
+		//Create child element
 		IXMLDOMElementPtr objectNode;
 		pXMLDoc->createElement(L"object", &objectNode);
 
-		std::wstring wTitle = ConvertFromUtf8ToUtf16(row->title);
-		objectNode->setAttribute(L"title", _variant_t(wTitle.c_str()));
+		objectNode->setAttribute(L"title", _variant_t(row->title.c_str()));
 		objectNode->setAttribute(L"model", _variant_t((long)(row->model)));
 
 		objectNode->setAttribute(L"posX", _variant_t(row->posX));
@@ -82,29 +79,28 @@ bool generate_xml_for_propset(SavedPropSet* props, std::string outputFile)
 	}
 
 	FileStream* output;
-	// 将UTF-8文件路径转换为UTF-16
-	std::wstring ws = ConvertFromUtf8ToUtf16(outputFile);
-	// 确保正确分配BSTR
-	BSTR bs = SysAllocString(ws.c_str());
+	std::wstring ws;
+	ws.assign(outputFile.begin(), outputFile.end());
+	BSTR bs = SysAllocStringLen(ws.data(), ws.size());
 
 	bool result = true;
 	if (FAILED(FileStream::OpenFile(bs, &output, true)))
 	{
-		write_text_to_log_file("打开输出失败了！");
+		write_text_to_log_file("Opening output failed");
 		result = false;
 	}
 	else
 	{
 		if (!format_dom_document(pXMLDoc, output))
 		{
-			write_text_to_log_file("保存失败！");
+			write_text_to_log_file("Save failed");
 			write_text_to_log_file(outputFile);
 			handle_error(pXMLDoc);
 			result = false;
 		}
 		else
 		{
-			write_text_to_log_file("保存完成！");
+			write_text_to_log_file("Save complete");
 			write_text_to_log_file(outputFile);
 			result = true;
 		}
@@ -117,11 +113,11 @@ bool generate_xml_for_propset(SavedPropSet* props, std::string outputFile)
 
 		if (count == 0)
 		{
-			write_text_to_log_file("文件已关闭，计数为零。");
+			write_text_to_log_file("File closed, zero count");
 		}
 		else
 		{
-			write_text_to_log_file("文件已关闭，计数为非零。");
+			write_text_to_log_file("File closed, non-zero count");
 		}
 	}
 	return result;
@@ -131,16 +127,12 @@ bool parse_xml_for_propset(std::string inputFile, SavedPropSet* set)
 {
 	CoInitialize(NULL);
 
-	//读取 XML
+	//read XML
 	MSXML2::IXMLDOMDocumentPtr spXMLDoc;
 	spXMLDoc.CreateInstance(__uuidof(MSXML2::DOMDocument60));
-	
-	// 将UTF-8文件路径转换为UTF-16
-	std::wstring wInputFile = ConvertFromUtf8ToUtf16(inputFile);
-	
-	if (!spXMLDoc->load(wInputFile.c_str()))
+	if (!spXMLDoc->load(inputFile.c_str()))
 	{
-		write_text_to_log_file("未能找到 XML 文件！");
+		write_text_to_log_file("No XML file found");
 		return false;
 	}
 
@@ -164,21 +156,7 @@ bool parse_xml_for_propset(std::string inputFile, SavedPropSet* set)
 				VARIANT var;
 				VariantInit(&var);
 				attribNode->get_nodeValue(&var);
-				// 使用Windows API正确处理UTF-16到UTF-8的转换
-				BSTR bstr = V_BSTR(&var);
-				int utf8Size = WideCharToMultiByte(CP_UTF8, 0, bstr, -1, NULL, 0, NULL, NULL);
-				if (utf8Size > 0)
-				{
-					std::vector<char> utf8Str(utf8Size);
-					WideCharToMultiByte(CP_UTF8, 0, bstr, -1, &utf8Str[0], utf8Size, NULL, NULL);
-					set->saveName = std::string(&utf8Str[0]);
-				}
-				else
-				{
-					// 回退到原始方法
-					std::string utf8SaveName = _com_util::ConvertBSTRToString(bstr);
-					set->saveName = utf8SaveName;
-				}
+				set->saveName = _com_util::ConvertBSTRToString(V_BSTR(&var));
 			}
 
 			SysFreeString(xmlParser_bstr);
@@ -217,21 +195,7 @@ bool parse_xml_for_propset(std::string inputFile, SavedPropSet* set)
 				VARIANT var;
 				VariantInit(&var);
 				attribNode->get_nodeValue(&var);
-				// 使用Windows API正确处理UTF-16到UTF-8的转换
-				BSTR bstr = V_BSTR(&var);
-				int utf8Size = WideCharToMultiByte(CP_UTF8, 0, bstr, -1, NULL, 0, NULL, NULL);
-				if (utf8Size > 0)
-				{
-					std::vector<char> utf8Str(utf8Size);
-					WideCharToMultiByte(CP_UTF8, 0, bstr, -1, &utf8Str[0], utf8Size, NULL, NULL);
-					row->title = std::string(&utf8Str[0]);
-				}
-				else
-				{
-					// 回退到原始方法
-					std::string utf8Title = _com_util::ConvertBSTRToString(bstr);
-					row->title = utf8Title;
-				}
+				row->title = _com_util::ConvertBSTRToString(V_BSTR(&var));
 			}
 			else if (wcscmp(xmlParser_bstr, L"model") == 0)
 			{
@@ -335,7 +299,7 @@ bool parse_xml_for_propset(std::string inputFile, SavedPropSet* set)
 
 	set->dbSize = set->items.size();
 
-	//nodes->Release(); //不要执行此操作，它会在退出时崩溃
+	//nodes->Release(); //don't do this, it crashes on exit
 	spXMLDoc.Release();
 	CoUninitialize();
 
@@ -346,7 +310,7 @@ void handle_error(IXMLDOMDocumentPtr doc)
 {
 	std::ostringstream ss;
 	IXMLDOMParseError* pError;
-	ss << "XML 错误: ";
+	ss << "XML error: ";
 	doc->get_parseError(&pError);
 	if (pError)
 	{
@@ -356,14 +320,14 @@ void handle_error(IXMLDOMDocumentPtr doc)
 	}
 	else
 	{
-		ss << "未知";
+		ss << "Unknown";
 	}
 	write_text_to_log_file(ss.str());
 }
 
 bool format_dom_document(IXMLDOMDocument *pDoc, IStream *pStream)
 {
-	// 创建写入器
+	// Create the writer
 	MSXML2::IMXWriterPtr pMXWriter;
 	
 	if (FAILED(pMXWriter.CreateInstance(__uuidof(MSXML2::MXXMLWriter60))))
@@ -394,7 +358,7 @@ bool format_dom_document(IXMLDOMDocument *pDoc, IStream *pStream)
 		return false;
 	}
 
-	// 创建 SAX 读取器
+	// Create the SAX reader
 	MSXML2::ISAXXMLReaderPtr pSAXReader;
 	if (FAILED(pSAXReader.CreateInstance(__uuidof (MSXML2::SAXXMLReader60))))
 	{
@@ -413,7 +377,7 @@ bool format_dom_document(IXMLDOMDocument *pDoc, IStream *pStream)
 		return false;
 	}
 
-	// 执行写入
+	// Perform the write
 	bool success1 = SUCCEEDED(pMXWriter->put_output(_variant_t(pStream)));
 	bool success2 = SUCCEEDED(pSAXReader->parse(pDoc));
 

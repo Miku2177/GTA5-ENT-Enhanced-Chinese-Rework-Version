@@ -1,11 +1,11 @@
 /*
-这段代码的部分内容最初是 GTA V SCRIPT HOOK SDK 的一部分。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-现在它是 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Sondai Smith 和其他贡献者 2015
+(C) Sondai Smith and fellow contributors 2015
 */
 
 #include "script.h"
@@ -34,12 +34,12 @@ int activeLineIndexCopArmed = 0;
 int activeLineIndexPedAgainstWeapons = 0;
 int activeLineIndexPowerPunchWeapons = 0;
 
-// 引力榴弹消息提示
+// Sucking Grenades
 static bool shown_vacuum_message = false; 
-// 重力枪消息提示 
+// Gravity Gun
 static bool shown_gravitygun_message = false;
 
-// 保存武器相关变量
+// saved weapons variables
 bool requireRefreshOfWeaponSaveSlotMenu = false;
 std::string activeSavedWeaponSlotName;
 bool WeaponSaveSlotMenuInterrupt = false;
@@ -49,7 +49,7 @@ bool WeaponSaveMenuInterrupt = false;
 int activeSavedWeaponIndex = -1;
 bool requireRefreshOfWeaponSlotMenu = false;
 
-// 自动给予所有武器的相关变量
+// give all weapons automatically variables
 bool featureGiveAllWeapons = false;
 bool featureAddAllWeaponsAttachments = false;
 int tick_allw, tick_firemode = 0;
@@ -63,14 +63,14 @@ bool PlayerUpdated_s = true;
 
 Hash temp_weapon = -1;
 
-// 手电筒频闪功能
+//Flashlight strobe
 int WeapStrobeIndexN = 0;
 bool WeapStrobeChanged = true;
 bool f_strobe = false;
 int strb_c = 0;
 float strobe_tick = 0.0;
 
-// 手电筒强度
+//Flashlight Intensity
 int WeapFlashDistIndex = 0;
 bool WeapFlashDistChanged = true;
 
@@ -107,7 +107,7 @@ bool featureCanDisarmNPC = false;
 bool featurePedNoWeaponDrop = false;
 bool featurePowerPunch = false;
 
-// 警察武器
+// cop weapons
 bool someonehasgunandshooting = false;
 Ped shooting_criminal = -1;
 
@@ -122,7 +122,7 @@ DWORD grav_partfx = 0;
 
 DWORD featureWeaponVehShootLastTime = 0;
 
-// 强力拳击
+// power punch 
 std::string result_p;
 std::string lastPowerWeapon;
 std::string lastCustomWeapon;
@@ -144,7 +144,7 @@ int tick_rap_allw, w_tick_rap_secs_passed, ss_tick_rap_secs_curr = 0;
 
 bool redrawWeaponMenuAfterEquipChange = false;
 
-// 警察武器
+// Cop Weapon
 const std::vector<std::string> WEAPONS_COPARMED_CAPTIONS{ "\"WEAPON_UNARMED\"", "\"WEAPON_NIGHTSTICK\"", "\"WEAPON_FLASHLIGHT\"", "\"WEAPON_KNIFE\"", "\"WEAPON_DAGGER\"", "\"WEAPON_HAMMER\"", "\"WEAPON_BAT\"", "\"WEAPON_GOLFCLUB\"", 
 "\"WEAPON_CROWBAR\"", "\"WEAPON_POOLCUE\"", "\"WEAPON_WRENCH\"", "\"WEAPON_MACHETE\"", "\"WEAPON_BOTTLE\"", "\"WEAPON_PISTOL\"", "\"WEAPON_APPISTOL\"", "\"WEAPON_REVOLVER\"", "\"WEAPON_STUNGUN\"", "\"WEAPON_FLAREGUN\"",
 "\"WEAPON_MACHINEPISTOL\"", "\"WEAPON_MARKSMANPISTOL\"", "\"WEAPON_MINISMG\"", "\"WEAPON_ASSAULTSMG\"", "\"WEAPON_ASSAULTRIFLE\"", "\"WEAPON_CARBINERIFLE\"", "\"WEAPON_ADVANCEDRIFLE\"", "\"WEAPON_COMPACTRIFLE\"", "\"WEAPON_HEAVYSHOTGUN\"", 
@@ -153,52 +153,52 @@ const std::vector<std::string> WEAPONS_COPARMED_CAPTIONS{ "\"WEAPON_UNARMED\"", 
 int CopCurrArmedIndex = 1;
 bool CopCurrArmedChanged = true;
 
-// 载具武器
-const std::vector<std::string> WEAPONS_VEHICLE_CAPTIONS{ "关", "\"WEAPON_RPG\"", "\"WEAPON_GRENADE\"", "\"WEAPON_MOLOTOV\"", "\"WEAPON_FIREWORK\"", "\"VEHICLE_WEAPON_PLAYER_BULLET\"", "\"VEHICLE_WEAPON_PLAYER_LAZER\"", 
+// Vehicle Weapon
+const std::vector<std::string> WEAPONS_VEHICLE_CAPTIONS{ "OFF", "\"WEAPON_RPG\"", "\"WEAPON_GRENADE\"", "\"WEAPON_MOLOTOV\"", "\"WEAPON_FIREWORK\"", "\"VEHICLE_WEAPON_PLAYER_BULLET\"", "\"VEHICLE_WEAPON_PLAYER_LAZER\"", 
 "\"WEAPON_DBSHOTGUN\"", "\"WEAPON_GRENADELAUNCHER\"", "\"WEAPON_RAILGUN\"", "\"VEHICLE_WEAPON_MINE\"", "\"VEHICLE_WEAPON_MINE_KINETIC\"", "\"VEHICLE_WEAPON_MINE_EMP\"", "\"VEHICLE_WEAPON_MINE_SPIKE\"", 
 "\"VEHICLE_WEAPON_MINE_SLICK\"", "\"VEHICLE_WEAPON_MINE_TAR\"", "\"WEAPON_PROXMINE\""/*, "\"WEAPON_FLAREGUN\"", "\"WEAPON_RAYPISTOL\""*/ };
 int VehCurrWeaponIndex = 0;
 bool VehCurrWeaponChanged = true;
 
-// 警察通缉等级
-const std::vector<std::string> WEAPONS_COPALARM_CAPTIONS{ "1 星", "2 星 或 以下", "3 星 或 以下", "4 星 或 以下", "5 星 或 以下", "始终总是" };
+// Cop Wanted Level
+const std::vector<std::string> WEAPONS_COPALARM_CAPTIONS{ "One Star", "Two Stars Or Less", "Three Stars Or Less", "Four Stars Or Less", "Five Stars Or Less", "Always" };
 const int WEAPONS_COPALARM_VALUES[] = { 1, 2, 3, 4, 5, 6 };
 int CopAlarmIndex = 1;
 bool CopAlarmChanged = true;
 
-// 快速射击速度
-const std::vector<std::string> WEAPONS_RAPIDFIRE_CAPTIONS{ "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1", "默认" };
+// Rapid Fire Speed
+const std::vector<std::string> WEAPONS_RAPIDFIRE_CAPTIONS{ "-8", "-7", "-6", "-5", "-4", "-3", "-2", "-1", "Default" };
 const int WEAPONS_RAPIDFIRE_VALUES[] = { 40, 35, 30, 25, 20, 15, 10, 5, -1 };
 int RapidFireIndex = 8;
 bool RapidFireChanged = true;
 
-// 切换狙击步枪的视野模式
-const std::vector<std::string> WEAPONS_SNIPERVISION_CAPTIONS{ "关", "启用快捷键", "开启夜视", "开启热成像" };
+// Toggle Vision For Sniper Rifles
+const std::vector<std::string> WEAPONS_SNIPERVISION_CAPTIONS{ "OFF", "Via Hotkey", "Night Vision", "Thermal Vision" };
 int SniperVisionIndex = 0;
 bool SniperVisionChanged = true;
 
-// 强力拳击强度
+// Power Punch Strength
 int PowerPunchIndex = 2;
 bool PowerPunchChanged = true;
 
-// 开火模式
-const std::vector<std::string> WEAPONS_FIREMODE_CAPTIONS{ "默认", "手动 单点射", "半自动 5连发", "全自动 5连发" };
+// Fire Mode
+const std::vector<std::string> WEAPONS_FIREMODE_CAPTIONS{ "Default", "Single Fire", "Burst Semi", "Burst Auto" };
 int WeaponsFireModeIndex = 0;
 bool WeaponsFireModeChanged = true;
 
-// 无准星
-const std::vector<std::string> WEAPONS_NORETICLE_CAPTIONS{ "关", "始终总是", "仅限第一人称模式" };
+// No Reticle
+const std::vector<std::string> WEAPONS_NORETICLE_CAPTIONS{ "OFF", "Always", "For First Person Mode Only" };
 int WeaponsNoReticle = 0;
 bool WeaponsNoReticleChanged = true;
 
-// 自动加载已保存的武器
-const std::vector<std::string> WEAPONS_SAVED_LOAD_CAPTIONS{ "关", "添加到武器库", "仅限已保存武器" };
+// Load Saved Weapons Automatically
+const std::vector<std::string> WEAPONS_SAVED_LOAD_CAPTIONS{ "OFF", "Add To Inventory", "Saved Weapons Only" };
 int WeaponsSavedLoad = 0;
 bool WeaponsSavedLoadChanged = true;
 
-/* 开始重力枪相关代码 */
+/* Begin Gravity Gun related code */
 
-// 获取重力枪实体坐标的新方法 —— 来自 ScripthookV.Net
+// New approach to getting Grav gun entity coords -- from ScripthookV.Net
 Vector3 RotationToDirection(Vector3* rot){
 	float radiansZ = rot->z * 0.0174532925f;
 	float radiansX = rot->x * 0.0174532925f;
@@ -239,7 +239,7 @@ Vector3 DistanceFromCam(float distance){
 	return inworld;
 }
 
-// 基于距离和相机旋转获取方向偏移量
+// Get directional offset based on distance and camera rotation
 Vector3 DirectionOffsetFromCam(float distance){
 	Vector3 rot = CAM::GET_GAMEPLAY_CAM_ROT(0);
 	Vector3 dir = RotationToDirection(&rot);
@@ -257,7 +257,7 @@ void VectorToFloat(Vector3 unk, float *Out){
 	Out[2] = unk.z;
 }
 
-void RequestControlEntity(Entity entity) // 需要此功能以便我们可以拾取道具/行人。即使在单人模式（SP）中也需要，尽管这是一个网络（NETWORK）原生函数。
+void RequestControlEntity(Entity entity) //needed so we can pick up props/Peds. This is needed in SP, even though it's a NETWORK native
 {
 	int tick = 0;
 
@@ -266,15 +266,15 @@ void RequestControlEntity(Entity entity) // 需要此功能以便我们可以拾
 		tick++;
 	}
 }
-/* 结束重力枪相关代码 */
+/* End Gravity Gun related code */
 
 void fire_mode_hotkey() {
 	WeaponsFireModeIndex = WeaponsFireModeIndex + 1;
 	if (WeaponsFireModeIndex > 3) WeaponsFireModeIndex = 0; // 1
-	if (WeaponsFireModeIndex == 0) set_status_text("默认");
-	if (WeaponsFireModeIndex == 1) set_status_text("手动 单点射");
-	if (WeaponsFireModeIndex == 2) set_status_text("半自动 5连发");
-	if (WeaponsFireModeIndex == 3) set_status_text("全自动 5连发");
+	if (WeaponsFireModeIndex == 0) set_status_text("Default");
+	if (WeaponsFireModeIndex == 1) set_status_text("Single Fire");
+	if (WeaponsFireModeIndex == 2) set_status_text("Burst Semi");
+	if (WeaponsFireModeIndex == 3) set_status_text("Burst Auto");
 }
 
 void onchange_knuckle_appearance(int value, SelectFromListMenuItem* source){
@@ -403,11 +403,11 @@ void give_all_weapons_hotkey() {
 			WEAPON::GIVE_WEAPON_TO_PED(playerPed, weaponHash, clipMax * 2, false, false);
 		}
 	}
-	// 降落伞
+	// parachute
 	WEAPON::GIVE_WEAPON_TO_PED(playerPed, PARACHUTE_ID, 1, false, false);
 	PLAYER::SET_PLAYER_HAS_RESERVE_PARACHUTE(playerPed);
 
-	set_status_text("所有的武器已成功添加！");
+	set_status_text("All weapons added");
 }
 
 void add_all_weapons_attachments(Ped choice) {
@@ -471,7 +471,7 @@ void add_all_weapons_attachments(Ped choice) {
 		}
 	}
 
-	set_status_text("所有武器装备的配件，\n已添加到现有武器中！");
+	set_status_text("All weapon attachments added to existing weapons");
 }
 
 void load_saved_weapons() {
@@ -508,7 +508,7 @@ void load_saved_weapons() {
 		WEAPON::SET_AMMO_IN_CLIP(playerPed, sv->weapon, maxClipAmmo);
 		WEAPON::SET_PED_AMMO(playerPed, sv->weapon, maxAmmo);
 
-		set_status_text("已装备保存的武器！");
+		set_status_text("Saved weapons equipped");
 	}
 
 	for (std::vector<SavedWeaponDBRow*>::iterator it = savedWeapon.begin(); it != savedWeapon.end(); ++it)
@@ -550,8 +550,8 @@ bool process_individual_weapon_menu(int weaponIndex){
 
 	if (label_caption.empty()) label_caption = label;
 
-	if(label_caption.compare("手枪 .50") == 0){
-		label_caption = "手枪 .50"; // 菜单标题无法处理符号
+	if(label_caption.compare("Pistol .50") == 0){
+		label_caption = "Pistol 50"; //menu title can't handle symbols
 	}
 
 	std::string value = VOV_WEAPON_VALUES[lastSelectedWeaponCategory].at(weaponIndex);
@@ -566,7 +566,7 @@ bool process_individual_weapon_menu(int weaponIndex){
 
 	FunctionDrivenToggleMenuItem<int> *equipItem = new FunctionDrivenToggleMenuItem<int>();
 	std::stringstream ss;
-	ss << "装备 " << label_caption << "?";
+	ss << "Equip " << label_caption << "?";
 	equipItem->caption = ss.str();
 	equipItem->value = 1;
 	equipItem->getter_call = is_weapon_equipped;
@@ -585,14 +585,14 @@ bool process_individual_weapon_menu(int weaponIndex){
 
 		if(maxClipAmmo > 0){
 			MenuItem<int> *giveClipItem = new MenuItem<int>();
-			giveClipItem->caption = "补充弹匣";
+			giveClipItem->caption = "Give Clip";
 			giveClipItem->value = 2;
 			giveClipItem->isLeaf = true;
 			giveClipItem->onConfirmFunction = give_weapon_clip;
 			menuItems.push_back(giveClipItem);
 
 			MenuItem<int> *fillAmmoItem = new MenuItem<int>();
-			fillAmmoItem->caption = "补充弹药";
+			fillAmmoItem->caption = "Fill Ammo";
 			fillAmmoItem->value = 3;
 			fillAmmoItem->isLeaf = true;
 			fillAmmoItem->onConfirmFunction = fill_weapon_ammo;
@@ -626,7 +626,7 @@ bool process_individual_weapon_menu(int weaponIndex){
 		if(strcmp(weaponChar, "WEAPON_KNUCKLE") == 0){
 			SelectFromListMenuItem *listItem = new SelectFromListMenuItem(CAPTIONS_ATTACH_KNUCKLES, onchange_knuckle_appearance);
 			listItem->wrap = false;
-			listItem->caption = "选择皮肤";
+			listItem->caption = "Skin Choice";
 			listItem->value = get_current_knuckle_appearance();
 			menuItems.push_back(listItem);
 		}
@@ -634,7 +634,7 @@ bool process_individual_weapon_menu(int weaponIndex){
 		if(strcmp(weaponChar, "WEAPON_SWITCHBLADE") == 0){
 			SelectFromListMenuItem *listItem = new SelectFromListMenuItem(CAPTIONS_ATTACH_SWITCHBLADE, onchange_switchblade_appearance);
 			listItem->wrap = false;
-			listItem->caption = "选择皮肤";
+			listItem->caption = "Skin Choice";
 			listItem->value = get_current_switchblade_appearance();
 			menuItems.push_back(listItem);
 		}
@@ -642,7 +642,7 @@ bool process_individual_weapon_menu(int weaponIndex){
 		if(strcmp(weaponChar, "WEAPON_REVOLVER") == 0){
 			SelectFromListMenuItem *listItem = new SelectFromListMenuItem(CAPTIONS_ATTACH_REVOLVER, onchange_revolver_appearance);
 			listItem->wrap = false;
-			listItem->caption = "选择皮肤";
+			listItem->caption = "Skin Choice";
 			listItem->value = get_current_revolver_appearance();
 			menuItems.push_back(listItem);
 		}
@@ -657,13 +657,13 @@ bool process_individual_weapon_menu(int weaponIndex){
 
 		if(tintableIndex != -1){
 			MenuItem<int> *tintItem = new MenuItem<int>();
-			tintItem->caption = "武器涂装颜色";
+			tintItem->caption = "Weapon Tints";
 			tintItem->value = 4;
 			tintItem->isLeaf = false;
 			tintItem->onConfirmFunction = onconfirm_open_tint_menu;
 			menuItems.push_back(tintItem);
 
-			/* 返回空菜单 - 需要改进！
+			/* Returns empty menu - needs work!
 
 			MenuItem<int> *LiveryTintItem = new MenuItem<int>();
 			LiveryTintItem->caption = "Weapon Livery Colours";
@@ -750,7 +750,7 @@ bool process_weaponlist_menu(){
 		}
 	}
 
-	return draw_generic_menu<int>(menuItems, &weaponSelectionIndex, "武器类型", onconfirm_weaponlist_menu, NULL, NULL);
+	return draw_generic_menu<int>(menuItems, &weaponSelectionIndex, "Weapon Categories", onconfirm_weaponlist_menu, NULL, NULL);
 }
 
 void onchange_cop_armed_index(int value, SelectFromListMenuItem* source){ 
@@ -769,7 +769,7 @@ bool onconfirm_coparmed_menu(MenuItem<int> choice)
 }
 
 void process_copweapon_menu(){
-	const std::string caption = "警察武器选项";
+	const std::string caption = "Cop Weapons Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -778,43 +778,43 @@ void process_copweapon_menu(){
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enabled";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureCopArmedWith;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "当玩家未持武器仅持近战";
+	toggleItem->caption = "If Player Unarmed/Melee Only";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerMelee;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警察遭到射击则用枪反击";
+	toggleItem->caption = "Cops Use Firearms If Shot At";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureSwitchWeaponIfDanger;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(WEAPONS_COPARMED_CAPTIONS, onchange_cop_armed_index);
 	listItem->wrap = false;
-	listItem->caption = "警察的装备";
+	listItem->caption = "Armed With";
 	listItem->value = CopCurrArmedIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "包括军队";
+	toggleItem->caption = "Including Army";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureArmyMelee;
 	menuItems.push_back(toggleItem);
 	
 	listItem = new SelectFromListMenuItem(WEAPONS_COPALARM_CAPTIONS, onchange_cop_alarm_index);
 	listItem->wrap = false;
-	listItem->caption = "当在";
+	listItem->caption = "When";
 	listItem->value = CopAlarmIndex;
 	menuItems.push_back(listItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "不移动则被逮捕";
+	toggleItem->caption = "Detained If Do Not Move";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDetainedIfNotMove;
 	menuItems.push_back(toggleItem);
@@ -877,7 +877,7 @@ void onchange_weapon_load_saved_modifier(int value, SelectFromListMenuItem* sour
 	WeaponsSavedLoadChanged = true;
 }
 
-///////////////////////////////// 切换狙击步枪的瞄准镜模式 /////////////////////////////////
+///////////////////////////////// TOGGLE VISION FOR SNIPER RIFLES /////////////////////////////////
 void sniper_vision_toggle()
 {
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
@@ -914,7 +914,7 @@ bool onconfirm_pedagainstweapons_menu(MenuItem<int> choice)
 }
 
 void process_pedagainstweapons_menu(){
-	const std::string caption = "行人不喜欢武器";
+	const std::string caption = "Peds Don't Like Weapons Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -923,51 +923,51 @@ void process_pedagainstweapons_menu(){
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enable";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePedAgainstWeapons;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "包括近战武器";
+	toggleItem->caption = "Including Melee Weapons";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureAgainstMeleeWeapons;
 	menuItems.push_back(toggleItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "行人攻击";
+	toggleItem->caption = "Peds Against";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePedAgainst;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "司机攻击";
+	toggleItem->caption = "Drivers Against";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDriverAgainst;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警察攻击";
+	toggleItem->caption = "Police Against";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePoliceAgainst;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(WEAPONS_CHANCEPOLICECALLING_CAPTIONS, onchange_chance_police_calling_index);
 	listItem->wrap = false;
-	listItem->caption = "看见枪报警的概率";
+	listItem->caption = "Chance Of Calling Police";
 	listItem->value = ChancePoliceCallingIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(WEAPONS_CHANCEPOLICECALLING_CAPTIONS, onchange_chance_attacking_you_index);
 	listItem->wrap = false;
-	listItem->caption = "攻击你的概率";
+	listItem->caption = "Chance Of Attacking You";
 	listItem->value = ChanceAttackingYouIndex;
 	menuItems.push_back(listItem);
 		
 	draw_generic_menu<int>(menuItems, &activeLineIndexPedAgainstWeapons, caption, onconfirm_pedagainstweapons_menu, NULL, NULL);
 }
 
-// 已保存的武器
+// Saved Weapons
 bool spawn_saved_weapon(int slot, std::string caption)
 {
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
@@ -993,7 +993,7 @@ bool spawn_saved_weapon(int slot, std::string caption)
 
 	WEAPON::SET_CURRENT_PED_WEAPON(playerPed, savedWeapon->weapon, 1);
 	
-	// 给予所有已装备武器的弹药
+	// give all equipped ammo
 	for (int a = 0; a < sizeof(VOV_WEAPON_VALUES) / sizeof(VOV_WEAPON_VALUES[0]); a++) {
 		for (int b = 0; b < VOV_WEAPON_VALUES[a].size(); b++) {
 			char* weaponName = (char*)VOV_WEAPON_VALUES[a].at(b).c_str();
@@ -1038,13 +1038,13 @@ void save_current_weapon(int slot)
 		}
 		else
 		{
-			ss << "新建武器存档 " << (lastKnownSavedWeaponCount + 1);
+			ss << "Saved Weapon " << (lastKnownSavedWeaponCount + 1);
 		}
 
 		keyboard_on_screen_already = true;
-		curr_message = "输入保存名称"; // 保存当前武器
+		curr_message = "Enter a save name:"; // save current weapon
 		auto existingText = ss.str();
-		std::string result = show_keyboard("手动输入名称", (char*)existingText.c_str());
+		std::string result = show_keyboard("Enter Name Manually", (char*)existingText.c_str());
 		if (!result.empty())
 		{
 			ENTDatabase* database = get_database();
@@ -1052,11 +1052,11 @@ void save_current_weapon(int slot)
 			if (database->save_weapon(playerPed, result, slot))
 			{
 				activeSavedWeaponSlotName = result;
-				set_status_text("武器保存成功了！");
+				set_status_text("Saved weapon");
 			}
 			else
 			{
-				set_status_text("武器保存失败了！");
+				set_status_text("Save error");
 			}
 		}
 	}
@@ -1086,10 +1086,10 @@ bool onconfirm_weapon_save_slot_menu(MenuItem<int> choice)
 {
 	switch (choice.value)
 	{
-	case 1: //生成
+	case 1: //spawn
 		spawn_saved_weapon(activeSavedWeaponIndex, activeSavedWeaponSlotName);
 		break;
-	case 2: //覆盖
+	case 2: //overwrite
 	{
 		save_current_weapon(activeSavedWeaponIndex);
 		requireRefreshOfWeaponSaveSlots = true;
@@ -1098,11 +1098,11 @@ bool onconfirm_weapon_save_slot_menu(MenuItem<int> choice)
 		WeaponSaveMenuInterrupt = true;
 	}
 	break;
-	case 3: //重命名
+	case 3: //rename
 	{
 		keyboard_on_screen_already = true;
-		curr_message = "输入新的名称"; // 重命名已保存的武器
-		std::string result = show_keyboard("手动输入名称", (char*)activeSavedWeaponSlotName.c_str());
+		curr_message = "Enter a new name:"; // rename saved weapon
+		std::string result = show_keyboard("Enter Name Manually", (char*)activeSavedWeaponSlotName.c_str());
 		if (!result.empty())
 		{
 			ENTDatabase* database = get_database();
@@ -1115,7 +1115,7 @@ bool onconfirm_weapon_save_slot_menu(MenuItem<int> choice)
 		WeaponSaveMenuInterrupt = true;
 	}
 	break;
-	case 4: //删除
+	case 4: //delete
 	{
 		ENTDatabase* database = get_database();
 		database->delete_saved_weapon(activeSavedWeaponIndex);
@@ -1162,7 +1162,7 @@ bool process_saveweapon_menu()
 		MenuItem<int>* item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = -1;
-		item->caption = "创建新的武器存档";
+		item->caption = "Create New Weapon Save";
 		menuItems.push_back(item);
 
 		for each (SavedWeaponDBRow * sv in savedWeapon)
@@ -1174,7 +1174,7 @@ bool process_saveweapon_menu()
 			menuItems.push_back(item);
 		}
 
-		draw_generic_menu<int>(menuItems, 0, "保存的武器", onconfirm_weapon_save_menu, NULL, NULL, weapon_save_menu_interrupt);
+		draw_generic_menu<int>(menuItems, 0, "Saved Weapons", onconfirm_weapon_save_menu, NULL, NULL, weapon_save_menu_interrupt);
 
 		for (std::vector<SavedWeaponDBRow*>::iterator it = savedWeapon.begin(); it != savedWeapon.end(); ++it)
 		{
@@ -1198,35 +1198,35 @@ bool process_weapon_save_slot_menu(int slot)
 		MenuItem<int>* item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 1;
-		item->caption = "装备";
+		item->caption = "Equip";
 		menuItems.push_back(item);
 
 		item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 2;
-		item->caption = "用当前内容覆盖";
+		item->caption = "Overwrite With Current";
 		menuItems.push_back(item);
 
 		item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 3;
-		item->caption = "重命名";
+		item->caption = "Rename";
 		menuItems.push_back(item);
 
 		item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 4;
-		item->caption = "删除";
+		item->caption = "Delete";
 		menuItems.push_back(item);
 
 		draw_generic_menu<int>(menuItems, 0, activeSavedWeaponSlotName, onconfirm_weapon_save_slot_menu, NULL, NULL, weapon_save_slot_menu_interrupt);
 	} while (requireRefreshOfWeaponSaveSlotMenu);
 	return false;
 }
-// 保存武器结束
+// end of save weapon
 
 bool onconfirm_weapon_menu(MenuItem<int> choice){
-	// 公共变量
+	// common variables
 	Player player = PLAYER::PLAYER_ID();
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
 	
@@ -1236,7 +1236,7 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 			break;
 		case 2:
 			WEAPON::REMOVE_ALL_PED_WEAPONS(playerPed, false);
-			set_status_text("所有的武器已成功移除！");
+			set_status_text("All weapons removed");
 			break;
 		case 3:
 			add_all_weapons_attachments(playerPed);
@@ -1275,7 +1275,7 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 				WEAPON::SET_PED_WEAPON_TINT_INDEX(playerPed, weaponHash, VALUES_TINT.at(0));
 			}
 
-			set_status_text("所有武器的配件和涂装, \n已从现有的武器中移除！");
+			set_status_text("All weapon attachments and tints removed from existing weapons");
 			break;
 		case 6:
 			if (process_saveweapon_menu()) return false;
@@ -1295,7 +1295,7 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 				PLAYER::SET_PLAYER_HAS_RESERVE_PARACHUTE(player);
 			}
 
-			set_status_text("所有弹药已补满！");
+			set_status_text("All ammo filled");
 			break;
 		case 9:
 			for(int a = 0; a < sizeof(VOV_WEAPON_VALUES) / sizeof(VOV_WEAPON_VALUES[0]); a++){
@@ -1305,10 +1305,10 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 				}
 			}
 
-			// 降落伞
+			// parachute
 			WEAPON::REMOVE_WEAPON_FROM_PED(playerPed, PARACHUTE_ID);
 
-			set_status_text("所有弹药已清空！");
+			set_status_text("All ammo removed");
 			break;
 		case 10:
 			process_weaponlist_menu();
@@ -1316,8 +1316,8 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 		case 11:
 		{
 			keyboard_on_screen_already = true;
-			curr_message = "输入武器的模型名称（例如：weapon_microsmg）"; // 装备武器
-			std::string result = show_keyboard("手动输入名称", (char *) lastCustomWeapon.c_str());
+			curr_message = "Enter weapon model name (e.g. weapon_microsmg):"; // equip a weapon
+			std::string result = show_keyboard("Enter Name Manually", (char *) lastCustomWeapon.c_str());
 			if(!result.empty()){
 				result = trim(result);
 				lastCustomWeapon = result;
@@ -1325,10 +1325,10 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 				std::ostringstream ss;
 				if(WEAPON::IS_WEAPON_VALID(weaponHash)){
 					WEAPON::GIVE_WEAPON_TO_PED(playerPed, weaponHash, 250, false, false);
-					ss << result << " 已添加成功！";
+					ss << result << " added";
 				}
 				else{
-					ss << "~r~错误: 无法找到此武器 \"" << result << "\"";
+					ss << "~r~Error: Couldn't find weapon \"" << result << "\"";
 				}
 				set_status_text(ss.str());
 			}
@@ -1338,12 +1338,12 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 			WEAPON::GIVE_WEAPON_TO_PED(playerPed, PARACHUTE_ID, 1, false, false);
 			PLAYER::SET_PLAYER_HAS_RESERVE_PARACHUTE(player);
 
-			set_status_text("降落伞已添加！");
+			set_status_text("Parachute added");
 			break;
 		case 18:
 			WEAPON::REMOVE_WEAPON_FROM_PED(playerPed, PARACHUTE_ID);
 
-			set_status_text("降落伞已移除！");
+			set_status_text("Parachute removed");
 			break;
 		case 27:
 			process_copweapon_menu();
@@ -1363,100 +1363,100 @@ bool onconfirm_weapon_menu(MenuItem<int> choice){
 bool process_weapon_menu(){
 	int i = 0;
 
-	const std::string caption = "武器选项";
+	const std::string caption = "Weapon Options";
 	
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem* listItem;
 
 	MenuItem<int> *item = new MenuItem<int>();
-	item->caption = "添加所有武器装备";
+	item->caption = "Give All Weapons";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	ToggleMenuItem<int>* toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "自动添加所有武器装备";
+	toggleItem->caption = "Give All Weapons Automatically";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureGiveAllWeapons;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	item = new MenuItem<int>();
-	item->caption = "移除所有武器装备";
+	item->caption = "Remove All Weapons";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "添加所有武器的配件";
+	item->caption = "Add All Weapon Attachments";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "自动添加所有武器的配件";
+	toggleItem->caption = "Add All Weapon Attachments Automatically";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureAddAllWeaponsAttachments;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	item = new MenuItem<int>();
-	item->caption = "移除所有武器的配件和涂装";
+	item->caption = "Remove All Weapon Attachments and Tints";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "保存的武器";
+	item->caption = "Saved Weapons";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(WEAPONS_SAVED_LOAD_CAPTIONS, onchange_weapon_load_saved_modifier);
 	listItem->wrap = false;
-	listItem->caption = "装备保存武器";
+	listItem->caption = "Equip Saved Weapons";
 	listItem->value = WeaponsSavedLoad;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "补充所有弹药";
+	item->caption = "Fill All Ammo";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "清空所有弹药";
+	item->caption = "Remove All Ammo";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "单个武器添加";
+	item->caption = "Individual Weapons";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "自定义添加武器";
+	item->caption = "Enter Name Manually";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(WEAP_DMG_CAPTIONS, onchange_weap_dmg_modifier);
 	listItem->wrap = false;
-	listItem->caption = "武器伤害倍数";
+	listItem->caption = "Weapon Damage Modifier";
 	listItem->value = weapDmgModIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "无限弹药";
+	toggleItem->caption = "Infinite Ammo";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponInfiniteAmmo;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "无需换弹";
+	toggleItem->caption = "No Reload";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponNoReload;
 	toggleItem->toggleValueUpdated = NULL;
@@ -1464,73 +1464,73 @@ bool process_weapon_menu(){
 
 	listItem = new SelectFromListMenuItem(WEAPONS_NORETICLE_CAPTIONS, onchange_weapon_no_reticle_modifier);
 	listItem->wrap = false;
-	listItem->caption = "不显示准星";
+	listItem->caption = "No Reticle";
 	listItem->value = WeaponsNoReticle;
 	menuItems.push_back(listItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "死亡/被捕时丢弃武器";
+	toggleItem->caption = "Lose Weapons On Arrest/Death";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureCopTakeWeapon;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	item = new MenuItem<int>();
-	item->caption = "添加降落伞";
+	item->caption = "Add Parachute";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "移除降落伞";
+	item->caption = "Remove Parachute";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "无限降落伞";
+	toggleItem->caption = "Infinite Parachutes";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponInfiniteParachutes;
 	toggleItem->toggleValueUpdated = &featureWeaponInfiniteParachutesUpdated;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "没有降落伞";
+	toggleItem->caption = "No Parachutes";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponNoParachutes;
 	toggleItem->toggleValueUpdated = &featureWeaponNoParachutesUpdated;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "火焰弹";
+	toggleItem->caption = "Fire Ammo";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponFireAmmo;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "爆炸弹药";
+	toggleItem->caption = "Explosive Ammo";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponExplosiveAmmo;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "爆炸近战";
+	toggleItem->caption = "Explosive Melee";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponExplosiveMelee;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "超级连环爆炸手雷";
+	toggleItem->caption = "Super Explosive Grenades";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponExplosiveGrenades;
 	toggleItem->toggleValueUpdated = NULL;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "引力榴弹枪";
+	toggleItem->caption = "Sucking Grenades";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWeaponVacuumGrenades;
 	toggleItem->toggleValueUpdated = NULL;
@@ -1538,24 +1538,24 @@ bool process_weapon_menu(){
 
 	listItem = new SelectFromListMenuItem(WEAPONS_VEHICLE_CAPTIONS, onchange_vehicle_weapon_modifier);
 	listItem->wrap = false;
-	listItem->caption = "载具武器";
+	listItem->caption = "Vehicle Weapon";
 	listItem->value = VehCurrWeaponIndex;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "警察武器";
+	item->caption = "Cop Weapons";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "行人不喜欢武器";
+	item->caption = "Peds Don't Like Weapons";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "重力枪";
+	toggleItem->caption = "Gravity Gun";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureGravityGun;
 	toggleItem->toggleValueUpdated = NULL;
@@ -1563,67 +1563,67 @@ bool process_weapon_menu(){
 
 	listItem = new SelectFromListMenuItem(WEAPONS_SNIPERVISION_CAPTIONS, onchange_sniper_vision_modifier);
 	listItem->wrap = false;
-	listItem->caption = "切换狙击步枪开镜视角";
+	listItem->caption = "Toggle Vision For Sniper Rifles";
 	listItem->value = SniperVisionIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "友军伤害";
+	toggleItem->caption = "Friendly Fire";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureFriendlyFire;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "手部中弹时丢弃武器";
+	toggleItem->caption = "Drop Weapon If Hand Shot";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDropWeapon;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "射击以解除NPC的武装";
+	toggleItem->caption = "Shoot To Disarm NPCs";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureCanDisarmNPC;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "禁止拾取丢弃的武器";
+	toggleItem->caption = "Cannot Pickup Dropped Weapons";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePedNoWeaponDrop;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "快速射击";
+	toggleItem->caption = "Rapid Fire";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRapidFire;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(WEAPONS_RAPIDFIRE_CAPTIONS, onchange_weapons_rapidfire_modifier);
 	listItem->wrap = false;
-	listItem->caption = "快速射击速度";
+	listItem->caption = "Rapid Fire Speed";
 	listItem->value = RapidFireIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(WEAPONS_FIREMODE_CAPTIONS, onchange_weapons_firemode_modifier);
 	listItem->wrap = false;
-	listItem->caption = "射击模式";
+	listItem->caption = "Fire Mode";
 	listItem->value = WeaponsFireModeIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "弹药用尽时丢弃武器";
+	toggleItem->caption = "Drop Weapon When Empty";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDropWeaponOutAmmo;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(FUEL_COLOURS_R_CAPTIONS, onchange_weap_strobe_index);
 	listItem->wrap = false;
-	listItem->caption = "手电筒闪烁";
+	listItem->caption = "Flashlight Strobe";
 	listItem->value = WeapStrobeIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(WEAP_DMG_CAPTIONS, onchange_weap_flashdist_index);
 	listItem->wrap = false;
-	listItem->caption = "手电筒亮度";
+	listItem->caption = "Flashlight Intensity";
 	listItem->value = WeapFlashDistIndex;
 	menuItems.push_back(listItem);
 
@@ -1706,17 +1706,17 @@ void reset_weapon_globals(){
 
 void update_weapon_features(BOOL bPlayerExists, Player player){
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
-	// 武器伤害修改器
+	// Weapon Damage Modifier
 	if(bPlayerExists){
-		// 如果为默认值，则无需每帧设置
+		// Don't need to set this per-frame if it's at the default
 		if (!SCRIPT::HAS_SCRIPT_LOADED("wardrobe_sp")) {
 			PLAYER::SET_PLAYER_WEAPON_DAMAGE_MODIFIER(player, WEAP_DMG_FLOAT[weapDmgModIndex]);
-			PLAYER::SET_PLAYER_MELEE_WEAPON_DAMAGE_MODIFIER(player, WEAP_DMG_FLOAT[weapDmgModIndex], 1); // R* 修改了这个原生函数。现在它最后需要一个布尔值。
+			PLAYER::SET_PLAYER_MELEE_WEAPON_DAMAGE_MODIFIER(player, WEAP_DMG_FLOAT[weapDmgModIndex], 1); //R* messed with the native. It now takes a bool at the end.
 			PLAYER::SET_PLAYER_VEHICLE_DAMAGE_MODIFIER(player, WEAP_DMG_FLOAT[weapDmgModIndex]);
 		}
 	}
 
-	// 车载武器
+	// Vehicle Weapon
 	if (VehCurrWeaponIndex > 0 && PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 0)) { // WEAPONS_VEHICLE_VALUES[VehCurrWeaponIndex] > 0
 		Player player = PLAYER::PLAYER_ID();
 		Ped playerPed = PLAYER::PLAYER_PED_ID();
@@ -1785,7 +1785,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 	
-	// 武器
+	// Weapon
 	if(featureWeaponFireAmmo){
 		if(bPlayerExists){
 			GAMEPLAY::SET_FIRE_AMMO_THIS_FRAME(player);
@@ -1801,13 +1801,13 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 			GAMEPLAY::SET_EXPLOSIVE_MELEE_THIS_FRAME(player);
 	}
 
-	// 超级爆炸手榴弹 && 吸附手榴弹
+	// Super Explosive Grenades && Sucking Grenades
 	if (featureWeaponExplosiveGrenades || featureWeaponVacuumGrenades) {
 		const int array_g = 1024;
 		Object objects_g[array_g];
 		int count_g = worldGetAllObjects(objects_g, array_g);
 		for (int i = 0; i < count_g; i++) {
-			// 超级爆炸手榴弹
+			// Super Explosive Grenades
 			if (featureWeaponExplosiveGrenades) {
 				Hash grenade = ENTITY::GET_ENTITY_MODEL(objects_g[i]);
 				if ((grenade == 0x1152354B || grenade == 0x741FD3C4)) {
@@ -1820,7 +1820,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 					if (!ENTITY::IS_ENTITY_IN_AIR(objects_g[i]) && dist > 15.0 && dist < 99.0) FIRE::ADD_EXPLOSION(gr_cor.x, gr_cor.y, gr_cor.z, ExplosionTypeGrenadeL, 35.0, rand() % 15 == 0, false, 0.0);
 				}
 			}
-			// 吸附手榴弹
+			// Sucking Grenades
 			if (featureWeaponVacuumGrenades) {
 				if (vacuum_seconds < 30) {
 					s_vacuum_secs_passed = clock() / CLOCKS_PER_SEC;
@@ -1829,9 +1829,9 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 						s_vacuum_secs_curr = s_vacuum_secs_passed;
 					}
 				}
-				if (!shown_vacuum_message) {// 移除武器检查
-					set_status_text("~y~已装备 ~q~引力 ~g~榴弹发射器！");
-					shown_vacuum_message = true;// 限制显示次数
+				if (!shown_vacuum_message) {// Removed weapon check
+					set_status_text("Equip the ~g~ Grenade Launcher");
+					shown_vacuum_message = true;// Limit the number of times displayed
 				}
 				Vector3 obj_cor = ENTITY::GET_ENTITY_COORDS(playerPed, TRUE);
 				float c_x, c_y, c_z = 0.0;
@@ -1907,16 +1907,16 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 							}
 						}
 					}
-				} // 手榴弹结束
-			} // 吸附手榴弹结束
-		} // 循环结束
-	} else {  // 添加else分支
+				} // end of grenade
+			} // end of sucking grenades
+		} // end of for
+	} else {  // Adding an else branch
 		if (!featureWeaponVacuumGrenades) {
-			shown_vacuum_message = false;// 重置标记
+			shown_vacuum_message = false;// Reset Marker
 		}
 	}
 
-	// 无限弹药
+	// Infinite Ammo
 	if(bPlayerExists && featureWeaponInfiniteAmmo){
 		for(int i = 0; i < sizeof(VOV_WEAPON_VALUES) / sizeof(VOV_WEAPON_VALUES[0]); i++){
 			for(int j = 0; j < VOV_WEAPON_VALUES[i].size(); j++){
@@ -1934,7 +1934,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 无限降落伞
+	// Infinite Parachutes
 	if(featureWeaponInfiniteParachutesUpdated){
 		if(featureWeaponInfiniteParachutes){
 			featureWeaponNoParachutes = false;
@@ -1943,13 +1943,13 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 	}
 	if(bPlayerExists && featureWeaponInfiniteParachutes && detained == false && in_prison == false && super_jump_no_parachute == false){
 		int pState = PED::GET_PED_PARACHUTE_STATE(playerPed);
-		// 未持武器或坠落状态 - 不要尝试给已经在使用降落伞的玩家再添加一个，否则会导致游戏崩溃
+		//unarmed or falling - don't try and give p/chute to player already using one, crashes game
 		if(pState == -1 || pState == 3){
 			WEAPON::GIVE_DELAYED_WEAPON_TO_PED(playerPed, PARACHUTE_ID, 1, 0);
 		}
 	}
 
-	// 无降落伞
+	// No Parachutes
 	if(featureWeaponNoParachutesUpdated){
 		if(featureWeaponNoParachutes){
 			featureWeaponInfiniteParachutes = false;
@@ -1963,12 +1963,12 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 武器无需换弹
+	// Weapon No Reload
 	if(bPlayerExists){
 		WEAPON::SET_PED_INFINITE_AMMO_CLIP(playerPed, featureWeaponNoReload);
 	}
 	
-	// 无准星
+	// No Reticle
 	if (NPC_RAGDOLL_VALUES[WeaponsNoReticle] > 0) {
 		Vehicle cur_v = PED::GET_VEHICLE_PED_IS_USING(playerPed);
 		if (NPC_RAGDOLL_VALUES[WeaponsNoReticle] == 1 || (NPC_RAGDOLL_VALUES[WeaponsNoReticle] == 2 && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, true) && CAM::_0xEE778F8C7E1142E2(0) == 4) ||
@@ -1994,9 +1994,9 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 	
-	// 如果手部被击中则掉落武器
+	// Drop Weapon If Hand Shot
 	if (featureDropWeapon) {
-		Vector3 coords_myfinger_p = PED::GET_PED_BONE_COORDS(playerPed, 64016, 0, 0, 0); // 右手手指骨骼
+		Vector3 coords_myfinger_p = PED::GET_PED_BONE_COORDS(playerPed, 64016, 0, 0, 0); // right finger bone
 		if (WEAPON::HAS_ENTITY_BEEN_DAMAGED_BY_WEAPON(playerPed, 0, 2) && GAMEPLAY::HAS_BULLET_IMPACTED_IN_AREA(coords_myfinger_p.x, coords_myfinger_p.y, coords_myfinger_p.z, 0.25, 0, 0) && WEAPON::IS_PED_ARMED(playerPed, 7)) { // 0.2
 			Hash curr_w = WEAPON::GET_SELECTED_PED_WEAPON(playerPed);
 			WEAPON::SET_AMMO_IN_CLIP(playerPed, curr_w, 0);
@@ -2010,7 +2010,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 弹药耗尽时掉落武器
+	// Drop Weapon When Empty
 	if (featureDropWeaponOutAmmo && WEAPON::IS_PED_ARMED(playerPed, 7) && WEAPON::IS_PED_ARMED(playerPed, 6) && WEAPON::GET_SELECTED_PED_WEAPON(playerPed) != GAMEPLAY::GET_HASH_KEY("WEAPON_STUNGUN")) {
 		if (WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed)) == 1) temp_weapon = WEAPON::GET_SELECTED_PED_WEAPON(playerPed);
 		if (WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed)) < 1) {
@@ -2031,16 +2031,16 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		OBJECT::DELETE_OBJECT(&temp_w);
 	}
 
-	// 射击以解除NPC武装 && 无法拾取掉落的武器
+	// Shoot To Disarm NPCs && Cannot Pickup Dropped Weapons
 	if (featureCanDisarmNPC || featurePedNoWeaponDrop) {
 		const int arrSize2 = 1024;
 		Ped a_npcs[arrSize2];
 		int count_npcs = worldGetAllPeds(a_npcs, arrSize2);
 		for (int i = 0; i < count_npcs; i++) {
-			// 射击以解除NPC武装
+			// Shoot To Disarm NPCs
 			if (featureCanDisarmNPC) {
 				if (a_npcs[i] != playerPed) {
-					Vector3 coords_finger_p = PED::GET_PED_BONE_COORDS(a_npcs[i], 64016, 0, 0, 0); // 右手手指骨骼
+					Vector3 coords_finger_p = PED::GET_PED_BONE_COORDS(a_npcs[i], 64016, 0, 0, 0); // right finger bone
 					if (WEAPON::HAS_ENTITY_BEEN_DAMAGED_BY_WEAPON(a_npcs[i], 0, 2) && GAMEPLAY::HAS_BULLET_IMPACTED_IN_AREA(coords_finger_p.x, coords_finger_p.y, coords_finger_p.z, 0.5/*0.4*/, 0, 0) && WEAPON::IS_PED_ARMED(a_npcs[i], 7)) {
 						Hash curr_w = WEAPON::GET_SELECTED_PED_WEAPON(a_npcs[i]);
 						if (!featurePedNoWeaponDrop) {
@@ -2059,7 +2059,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 					}
 				}
 			}
-			// 无法拾取掉落的武器
+			// Cannot Pickup Dropped Weapons
 			if (featurePedNoWeaponDrop) {
 				if (!PED::IS_PED_DEAD_OR_DYING(a_npcs[i], true) && a_npcs[i] != playerPed) WEAPON::SET_PED_DROPS_WEAPONS_WHEN_DEAD(a_npcs[i], false);
 				
@@ -2074,10 +2074,10 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 					OBJECT::DELETE_OBJECT(&temp_w);
 				}
 			}
-		} // 循环结束
+		} // end of for
 	}
 
-	// 警察武器
+	// Cops Weapon
 	if (featureCopArmedWith && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		Hash curr_weapon = WEAPON::GET_SELECTED_PED_WEAPON(playerPed);
 		Hash Weapon_Type = WEAPON::GET_WEAPONTYPE_GROUP(curr_weapon);
@@ -2108,7 +2108,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 						if ((PED::IS_PED_DEAD_OR_DYING(shooting_criminal, true) || !ENTITY::DOES_ENTITY_EXIST(shooting_criminal)) && someonehasgunandshooting == true) someonehasgunandshooting = false;
 					}
 					else someonehasgunandshooting = false;
-					if (featurePlayerMelee && (Weapon_Type == 3566412244/*近战武器*/ || Weapon_Type == 2685387236/*徒手*/) && someonehasgunandshooting == false) {
+					if (featurePlayerMelee && (Weapon_Type == 3566412244/*melee*/ || Weapon_Type == 2685387236/*unarmed*/) && someonehasgunandshooting == false) {
 						if ((PED::GET_PED_TYPE(a_npcs[i]) == 6 || PED::GET_PED_TYPE(a_npcs[i]) == 27) && !PED::IS_PED_GROUP_MEMBER(a_npcs[i], myENTGroup) && WEAPON::GET_SELECTED_PED_WEAPON(a_npcs[i]) != Cop_Weapon)
 							WEAPON::GIVE_WEAPON_TO_PED(a_npcs[i], Cop_Weapon, 999, false, true);
 						if (featureArmyMelee && PED::GET_PED_TYPE(a_npcs[i]) == 29 && !PED::IS_PED_GROUP_MEMBER(a_npcs[i], myENTGroup) && WEAPON::GET_SELECTED_PED_WEAPON(a_npcs[i]) != Cop_Weapon) 
@@ -2127,7 +2127,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 							WEAPON::GIVE_WEAPON_TO_PED(a_npcs[i], Cop_Weapon, 999, false, true);
 					}
 				}
-				// 逮捕模式
+				// arrest mode
 				if (featureDetainedIfNotMove && a_npcs[i] != PLAYER::PLAYER_PED_ID() && (PLAYER::GET_PLAYER_WANTED_LEVEL(PLAYER::PLAYER_ID()) == 1 || PLAYER::GET_PLAYER_WANTED_LEVEL(PLAYER::PLAYER_ID()) == 2) && AI::IS_PED_STILL(PLAYER::PLAYER_PED_ID())) {
 					s_vacuum_secs_passed = clock() / CLOCKS_PER_SEC;
 					if (((clock() / CLOCKS_PER_SEC) - s_vacuum_secs_curr) != 0) {
@@ -2151,14 +2151,14 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 					arrest_secs = 0;
 					temp_ped = -1;
 				}
-			} // 循环结束
-		} // 条件判断结束
+			} // end of for
+		} // end of if
 	}
 
-	//// <--- 行人不喜欢武器 ////
+	//// <--- PEDS DON'T LIKE WEAPONS ////
 	peds_dont_like_weapons(); 
 
-	// 强力拳击
+	// Power Punch
 	if (featurePowerPunch && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		Vector3 CamRot = ENTITY::GET_ENTITY_ROTATION(playerPed, 2);
 		long long int p_force = -1; 
@@ -2210,7 +2210,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 						temp_nearest_ped = surr_p_peds[i];
 					}
 				}
-			} // peds 相关代码块结束
+			} // end of int (peds)
 			for (int i = 0; i < count_surr_o; i++) {
 				if (ENTITY::HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(surr_objects[i], playerPed, 1)) {
 					ENTITY::APPLY_FORCE_TO_ENTITY(surr_objects[i], 1, v_x, v_y, v_z, 0, 0, 0, true, false, true, true, true, true);
@@ -2218,7 +2218,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 					PED::CLEAR_PED_LAST_DAMAGE_BONE(surr_objects[i]);
 					ENTITY::CLEAR_ENTITY_LAST_DAMAGE_ENTITY(surr_objects[i]);
 				}
-			} // objects 相关代码块结束
+			} // end of int (objects)
 			for (int i = 0; i < count_surr_v; i++) {
 				if (ENTITY::HAS_ENTITY_BEEN_DAMAGED_BY_ENTITY(surr_vehicles[i], playerPed, 1)) {
 					ENTITY::APPLY_FORCE_TO_ENTITY(surr_vehicles[i], 1, v_x, v_y, v_z, 0, 0, 0, true, false, true, true, true, true);
@@ -2226,7 +2226,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 					PED::CLEAR_PED_LAST_DAMAGE_BONE(surr_vehicles[i]);
 					ENTITY::CLEAR_ENTITY_LAST_DAMAGE_ENTITY(surr_vehicles[i]);
 				}
-			} // vehicles 相关代码块结束
+			} // end of int (vehicles)
 		}
 		if (temp_nearest_ped != -1) {
 			AUDIO::PLAY_SOUND_FROM_ENTITY(-1, "FIB3A_LAND_FROM_HEIGHT_MASTER", PLAYER::PLAYER_PED_ID(), 0, 0, 0);
@@ -2258,7 +2258,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 死亡/被捕时失去武器
+	// Lose Weapons On Death/Arrest
 	if (featureCopTakeWeapon) {
 		if ((time_since_d > 100 && time_since_d < 5000) || (time_since_a > 100 && time_since_a < 5000) || PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), 1) || player_died == true) {
 			WEAPON::REMOVE_ALL_PED_WEAPONS(playerPed, false);
@@ -2266,7 +2266,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 自动给予所有武器
+	// Give All Weapons Automatically
 	if (featureGiveAllWeapons && detained == false && in_prison == false && PED::IS_PED_HUMAN(playerPed) && !STREAMING::IS_PLAYER_SWITCH_IN_PROGRESS()) {
 		if (tick_allw < 100) {
 			w_tick_secs_passed = clock() / CLOCKS_PER_SEC;
@@ -2289,7 +2289,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 	
-	// 自动添加所有武器配件
+	// Add All Weapons Attachments Automatically
 	if (featureAddAllWeaponsAttachments && detained == false && in_prison == false && PED::IS_PED_HUMAN(playerPed) && !STREAMING::IS_PLAYER_SWITCH_IN_PROGRESS()) {
 		if (tick_a_allw < 150) {
 			w_tick_secs_passed = clock() / CLOCKS_PER_SEC;
@@ -2312,7 +2312,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 装备已保存的武器
+	// Equip Saved Weapons
 	if (NPC_RAGDOLL_VALUES[WeaponsSavedLoad] > 0 && detained == false && in_prison == false && PED::IS_PED_HUMAN(playerPed) && !CUTSCENE::IS_CUTSCENE_PLAYING() && GAMEPLAY::GET_MISSION_FLAG() == 0 && !STREAMING::IS_PLAYER_SWITCH_IN_PROGRESS()) {
 		if (tick_s_allw < 100) {
 			w_tick_secs_passed = clock() / CLOCKS_PER_SEC;
@@ -2324,7 +2324,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		if (tick_s_allw > 60 && PlayerUpdated_s && !ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID())) {
 			WAIT(300); //WAIT(200);
 			load_saved_weapons();
-			for (int a = 0; a < sizeof(VOV_WEAPON_VALUES) / sizeof(VOV_WEAPON_VALUES[0]); a++) { // 给予所有已装备武器的弹药
+			for (int a = 0; a < sizeof(VOV_WEAPON_VALUES) / sizeof(VOV_WEAPON_VALUES[0]); a++) { // give all equipped ammo
 				for (int b = 0; b < VOV_WEAPON_VALUES[a].size(); b++) {
 					char* weaponName = (char*)VOV_WEAPON_VALUES[a].at(b).c_str();
 					Hash weaponHash = GAMEPLAY::GET_HASH_KEY(weaponName);
@@ -2342,7 +2342,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 未瞄准时禁用视觉效果
+	// Disables visions if not aiming
 	if (WORLD_GRAVITY_LEVEL_VALUES[SniperVisionIndex] != 0 && !SCRIPT::HAS_SCRIPT_LOADED("carsteal2"))
 	{
 		if (!PED::GET_PED_CONFIG_FLAG(playerPed, 78, 1)) { 
@@ -2378,7 +2378,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 友军伤害
+	// Friendly Fire
 	if (featureFriendlyFire) {
 		NETWORK::NETWORK_SET_FRIENDLY_FIRE_OPTION(true);
 		PED::SET_CAN_ATTACK_FRIENDLY(playerPed, true, false);
@@ -2388,7 +2388,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		PED::SET_CAN_ATTACK_FRIENDLY(playerPed, false, false);
 	}
 
-	// 快速射击
+	// Rapid Fire
 	if (featureRapidFire) {
 		if ((CONTROLS::IS_CONTROL_PRESSED(2, 24) || (CONTROLS::IS_CONTROL_PRESSED(2, 24) && CONTROLS::IS_CONTROL_PRESSED(2, 25)))
 			&& ENTITY::DOES_ENTITY_EXIST(playerPed) && !ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID()) && !PED::IS_PED_RELOADING(playerPed)) {
@@ -2413,7 +2413,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 手电筒频闪
+	// Flashlight Strobe
 	if (FUEL_COLOURS_R_VALUES[WeapStrobeIndexN] > 0) {
 		float tmp_s = FUEL_COLOURS_R_VALUES[WeapStrobeIndexN];
 		if (CONTROLS::IS_CONTROL_JUST_PRESSED(2, 54) && WEAPON::SET_WEAPON_SMOKEGRENADE_ASSIGNED(playerPed) && strb_c < 6) {
@@ -2434,7 +2434,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 手电筒强度
+	// Flashlight Intensity
 	if (WEAP_DMG_FLOAT[WeapFlashDistIndex] > 1.0) {
 		if ((!PED::IS_PED_RELOADING(playerPed) && WEAPON::SET_WEAPON_SMOKEGRENADE_ASSIGNED(playerPed)) || (WEAPON::GET_SELECTED_PED_WEAPON(playerPed) == GAMEPLAY::GET_HASH_KEY("WEAPON_FLASHLIGHT") && CONTROLS::IS_CONTROL_PRESSED(2, 25))) {
 			Entity curr_w = WEAPON::GET_CURRENT_PED_WEAPON_ENTITY_INDEX(playerPed);
@@ -2456,14 +2456,14 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 
-	// 开火模式
+	// Fire Mode
 	if (WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] > 0) {
-		CONTROLS::DISABLE_CONTROL_ACTION(2, 24, 1); // 攻击
-		CONTROLS::DISABLE_CONTROL_ACTION(2, 257, 1); // 攻击 2
-		CONTROLS::DISABLE_CONTROL_ACTION(2, 69, 1); // 载具 攻击
+		CONTROLS::DISABLE_CONTROL_ACTION(2, 24, 1); // attack
+		CONTROLS::DISABLE_CONTROL_ACTION(2, 257, 1); // attack2
+		CONTROLS::DISABLE_CONTROL_ACTION(2, 69, 1); // vehicle attack
 		if (CONTROLS::IS_DISABLED_CONTROL_PRESSED(2, 24)) {
 			if (featureWeaponInfiniteAmmo && PED::IS_PED_SHOOTING(playerPed)) bullet_tick = bullet_tick + 1;
-			if (WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 3 && (((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) > 4) || bullet_tick > 4)) { // 连发自动模式
+			if (WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 3 && (((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) > 4) || bullet_tick > 4)) { // burst auto
 				w_tick_secs_passed = clock() / CLOCKS_PER_SEC;
 				if (((clock() / (CLOCKS_PER_SEC / 1000)) - w_tick_secs_curr) != 0) {
 					tick_firemode = tick_firemode + 1;
@@ -2475,12 +2475,12 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 					bullet_tick = 0;
 				}
 			}
-			if ((WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 1 && ((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) < 1) && bullet_tick < 1) || // 1 - 单发模式
-				(WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 2 && ((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) < 5) && bullet_tick < 5) || // 2 - 点射模式
-				(WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 3 && ((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) < 5) && bullet_tick < 5)) { // 3 - 连发自动模式
-				CONTROLS::ENABLE_CONTROL_ACTION(2, 24, 1); // 攻击
-				CONTROLS::ENABLE_CONTROL_ACTION(2, 257, 1); // 攻击 2
-				CONTROLS::ENABLE_CONTROL_ACTION(2, 69, 1); // 载具 攻击
+			if ((WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 1 && ((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) < 1) && bullet_tick < 1) || // 1 - single fire
+				(WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 2 && ((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) < 5) && bullet_tick < 5) || // 2 - burst semi
+				(WORLD_GRAVITY_LEVEL_VALUES[WeaponsFireModeIndex] == 3 && ((bullet_a - WEAPON::GET_AMMO_IN_PED_WEAPON(PLAYER::PLAYER_PED_ID(), WEAPON::GET_SELECTED_PED_WEAPON(playerPed))) < 5) && bullet_tick < 5)) { // 3 - burst auto
+				CONTROLS::ENABLE_CONTROL_ACTION(2, 24, 1); // attack
+				CONTROLS::ENABLE_CONTROL_ACTION(2, 257, 1); // attack2
+				CONTROLS::ENABLE_CONTROL_ACTION(2, 69, 1); // vehicle attack
 			}
 		}
 		if (!CONTROLS::IS_DISABLED_CONTROL_PRESSED(2, 24) && !PED::GET_PED_CONFIG_FLAG(PLAYER::PLAYER_PED_ID(), 58, 1)) {
@@ -2490,14 +2490,14 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		}
 	}
 	
-	// 重力枪
+	// Gravity Gun
 	if(bPlayerExists && featureGravityGun && GAMEPLAY::GET_MISSION_FLAG() == 0) {
 		Ped tempPed;
 		Hash tempWeap;
 
-		if (!shown_gravitygun_message) {// 移除武器检查
-			set_status_text("~y~已装备 ~q~重力 ~g~电击枪！");
-			shown_gravitygun_message = true; // 限制显示次数
+		if (!shown_gravitygun_message) {// Removed weapon check
+			set_status_text("Equip the ~g~ Stungun");
+			shown_gravitygun_message = true; // Limit the number of times displayed
 		}
 
 		if(!grav_target_locked) PLAYER::GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(PLAYER::PLAYER_ID(), &grav_entity);
@@ -2533,9 +2533,9 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 			}
 			}*/
 
-			RequestControlEntity(grav_entity); // 以便我们可以拾取行人/道具/载具
+			RequestControlEntity(grav_entity); //so we can pick up the ped/prop/vehicle
 			
-			ENTITY::SET_ENTITY_COORDS_NO_OFFSET(grav_entity, Coord[0], Coord[1], Coord[2], 0, 0, 0); // 这是导致道具消失的原因
+			ENTITY::SET_ENTITY_COORDS_NO_OFFSET(grav_entity, Coord[0], Coord[1], Coord[2], 0, 0, 0); //This is what was causing the props to disappear
 
 			if(ENTITY::IS_ENTITY_A_VEHICLE(grav_entity)){
 				ENTITY::SET_ENTITY_HEADING(grav_entity, ENTITY::GET_ENTITY_HEADING(PLAYER::PLAYER_PED_ID()) + 90.0f);
@@ -2548,7 +2548,7 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 				ENTITY::SET_ENTITY_HEADING(grav_entity, ENTITY::GET_ENTITY_HEADING(PLAYER::PLAYER_PED_ID()));
 
 				ENTITY::APPLY_FORCE_TO_ENTITY(grav_entity, 1, 0.0f, 350.0f, 2.0f, 2.0f, 0.0f, 0.0f, 10, 1, 1, 1, 0, 1);
-				// 保持锁定直到我们停止瞄准，但将实体设置为空
+				// Keeep it locked until we stop aiming, but set the entity to null
 				grav_entity = NULL;
 			}
 		}
@@ -2569,8 +2569,8 @@ void update_weapon_features(BOOL bPlayerExists, Player player){
 		//featureGravityGunUpdated = false;
 
 		//set_status_text("Gravity gun: ~r~called");
-	} else {// 添加else分支
-		shown_gravitygun_message = false;  // 重置标记
+	} else {// Adding an else branch
+		shown_gravitygun_message = false;  // Reset Marker
 	}
 }
 
@@ -2674,7 +2674,7 @@ void set_weapon_equipped(bool equipped, std::vector<int> extras){
 	if(equipped){
 		WEAPON::GIVE_WEAPON_TO_PED(playerPed, weapHash, 1000, 0, 0);
 
-		// 填满弹夹并额外携带一个备用弹夹
+		//fill the clip and one spare
 		int maxClipAmmo = WEAPON::GET_MAX_AMMO_IN_CLIP(playerPed, weapHash, false);
 		WEAPON::SET_PED_AMMO(playerPed, weapHash, maxClipAmmo);
 		WEAPON::SET_AMMO_IN_CLIP(playerPed, weapHash, maxClipAmmo);
@@ -2744,11 +2744,11 @@ void give_weapon_clip(MenuItem<int> choice){
 	int maxClipAmmo = WEAPON::GET_MAX_AMMO_IN_CLIP(playerPed, weapHash, false);
 
 	if(curClipAmmo < maxClipAmmo){
-		set_status_text("弹匣补充完毕！");
+		set_status_text("Clip filled");
 		WEAPON::SET_AMMO_IN_CLIP(playerPed, weapHash, maxClipAmmo);
 	}
 	else{
-		set_status_text("额外弹匣补充完毕！");
+		set_status_text("Extra clip added");
 		WEAPON::SET_PED_AMMO(playerPed, weapHash, curAmmo + maxClipAmmo);
 	}
 }
@@ -2766,7 +2766,7 @@ void fill_weapon_ammo(MenuItem<int> choice){
 	WEAPON::SET_AMMO_IN_CLIP(playerPed, weapHash, maxClipAmmo);
 	WEAPON::SET_PED_AMMO(playerPed, weapHash, maxAmmo);
 
-	set_status_text("弹药补充完毕！");
+	set_status_text("Ammo filled");
 }
 
 void fill_weapon_ammo_hotkey()
@@ -2783,7 +2783,7 @@ void fill_weapon_ammo_hotkey()
 	WEAPON::SET_AMMO_IN_CLIP(playerPed, tempWep, maxClipAmmo);
 	WEAPON::SET_PED_AMMO(playerPed, tempWep, maxAmmo);
 
-	set_status_text("弹药补充完毕！");
+	set_status_text("Ammo filled");
 }
 
 void onhighlight_weapon_mod_menu_tint(MenuItem<int> choice){
@@ -2837,7 +2837,7 @@ void onconfirm_open_tint_menu(MenuItem<int> choice) {
 		}
 		*/
 
-	draw_generic_menu<int>(menuItems, &tintSelection, "武器涂装颜色", onconfirm_weapon_mod_menu_tint, onhighlight_weapon_mod_menu_tint, NULL);
+	draw_generic_menu<int>(menuItems, &tintSelection, "Select Weapon Tint", onconfirm_weapon_mod_menu_tint, onhighlight_weapon_mod_menu_tint, NULL);
 }
 
 void onhighlight_weapon_mod_menu_tint_colour(MenuItem<int> choice) {
@@ -2887,10 +2887,10 @@ void onconfirm_open_tint_menu_colour(MenuItem<int> choice) {
 
 		}
 		else
-			set_status_text("应用武器涂装颜色时出错！");
+			set_status_text("Error applying Livery colour");
 	}
 
-	draw_generic_menu<int>(menuItems, &tintColourSelection, "选择武器涂装颜色", onconfirm_weapon_mod_menu_tint_colour, onhighlight_weapon_mod_menu_tint_colour, NULL);
+	draw_generic_menu<int>(menuItems, &tintColourSelection, "Select Weapon Livery Color", onconfirm_weapon_mod_menu_tint_colour, onhighlight_weapon_mod_menu_tint_colour, NULL);
 }
 
 void add_weapon_feature_enablements(std::vector<FeatureEnabledLocalDefinition>* results){

@@ -1,11 +1,11 @@
 /*
-这部分代码最初是作为 GTA V SCRIPT HOOK SDK 的一部分。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-它现在是增强版原生训练器项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Sondai Smith 及其他贡献者 2015
+(C) Sondai SMith and fellow contributors 2015
 */
 
 #pragma once
@@ -33,10 +33,6 @@ bool process_npc_skins_menu();
 bool process_online_skins_menu();
 
 bool process_animal_skins_menu();
-
-bool process_custom_peds_bodyguard_menu();
-
-bool onconfirm_bodyguards_custom_peds_category(MenuItem<std::string> choice);
 
 bool process_bodyguard_weapons_menu();
 
@@ -87,8 +83,6 @@ void onchange_body_blipcolour_index(int value, SelectFromListMenuItem* source);
 void onchange_body_blipsymbol_index(int value, SelectFromListMenuItem* source);
 
 void onchange_body_blipflash_index(int value, SelectFromListMenuItem* source);
-
-void onchange_random_bodyguard_pool_index(int value, SelectFromListMenuItem* source);
 
 bool process_bod_individual_weapon_menu();
 

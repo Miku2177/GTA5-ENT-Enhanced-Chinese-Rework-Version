@@ -37,27 +37,27 @@ void toggle_bomb_bay_camera()
 {
 	if (bombCam = NULL)
 	{
-		/* 禁用武器控制，以防止玩家破坏炸弹生成器 */
+		/* Disable the weapon controls to prevent the player from breaking the bomb spawner */
 		CONTROLS::DISABLE_CONTROL_ACTION(0, INPUT_VEH_FLY_ATTACK2, 1);
 
-		/* 获取炸弹舱门的骨骼索引，用于将摄像机附加到其上 */
+		/* Get the bone index for the bomb-bay door(s) for attaching the camera to */
 		int boneIndex = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(veh, "chassis_dummy");
 
-		/* 获取骨骼坐标，用于将摄像机附加到其上 */
+		/* Get bone coord for attaching cam to */
 		Vector3 boneCoords = ENTITY::GET_WORLD_POSITION_OF_ENTITY_BONE(veh, boneIndex);
 
-		/* 获取摄像机相对于世界坐标的偏移量，以使摄像机与炸弹舱门保持固定距离（并朝向正确方向） */
+		/* Get cam offset from world coords so the camera is a fixed distance (and facing the correct direction) from the bomb door */
 		Vector3 camOffset = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(veh, boneCoords.x, boneCoords.y, boneCoords.z - 1.3f);
 
-		/* 创建摄像机并将其附加到炸弹舱门上 - "0x19286a9" 来自脚本（launcher_basejumppack.c4） */
+		/* Create the camera to be attached to the bomb-bay doors - "0x19286a9" is from the scripts (launcher_basejumppack.c4) */
 		bombCam = CAM::CREATE_CAMERA_WITH_PARAMS(0x19286a9, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 65.0f, 0, 2);
 		CAM::ATTACH_CAM_TO_ENTITY(bombCam, veh, 0.0f, 1.3324f, -0.9f, 1);
 		CAM::POINT_CAM_AT_COORD(veh, camOffset.x, camOffset.y, camOffset.z);
 
-		/* 并非真正必要，但会为其添加轻微的“湍流”抖动效果 */
+		/* Not really necessary but gives it a gentle "turbulence" shake */
 		CAM::SHAKE_CAM(bombCam, "ROAD_VIBRATION_SHAKE", 0.4f);
 
-		/* 需要此操作，否则它会绘制比炸弹舱门更多的内容，这不是我们想要的 */
+		/* Needed else it'll draw more than the bomb-bay doors which is not what we want */
 		CAM::SET_CAM_FOV(bombCam, 65.0f);
 
 		CAM::SET_CAM_ACTIVE(bombCam, true);
@@ -67,7 +67,7 @@ void toggle_bomb_bay_camera()
 	}
 	else if (CAM::DOES_CAM_EXIST(bombCam))
 	{
-		/* 清理程序 */
+		/* Cleanup routine */
 		CAM::SET_CAM_ACTIVE(bombCam, false);
 		CAM::DESTROY_CAM(bombCam, true);
 		bombCam = NULL;
@@ -84,17 +84,17 @@ void toggle_bomb_bay_doors()
 	else
 		VEHICLE::OPEN_BOMB_BAY_DOORS(veh);
 
-	/* 在开始/停止投弹之前，等待舱门打开/关闭 */
+	/* Wait for doors to open/close before starting/stopping bomb drop */
 	WAIT(20);
 
-	/* 并非必需，但有则更好 - 来自脚本 */
+	/* Not needed but nice to have  - came out of scripts*/
 	AUDIO::REQUEST_SCRIPT_AUDIO_BANK("SCRIPT\DRUG_TRAFFIC_AIR", 0);
 	AUDIO::PLAY_SOUND_FRONTEND(-1, "DRUG_TRAFFIC_AIR_BAY_DOOR_OPEN_MASTER", 0, 1);
 
 	bombDoorOpen ^= bombDoorOpen;
 }
 
-/* 需要此操作以防止在炸弹摄像机模式下飞机坠毁，因为控制功能已被禁用 */
+/* Needed to prevent the plane from crashing during bomb-cam since the control(s) are disabled */
 void plane_autopilot(bool enabled)
 {
 
@@ -114,7 +114,7 @@ void plane_autopilot(bool enabled)
 }
 
 bool onconfirm_veh_weapons_menu(MenuItem<int> choice){
-	// 公共变量
+	// common variables
 	BOOL bPlayerExists = ENTITY::DOES_ENTITY_EXIST(PLAYER::PLAYER_PED_ID());
 
 	if (!bPlayerExists){
@@ -126,7 +126,7 @@ bool onconfirm_veh_weapons_menu(MenuItem<int> choice){
 
 	if (!PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0))
 	{
-		set_status_text("玩家不在车辆中！");
+		set_status_text("Player isn't in a vehicle");
 		return true;
 	}
 	return false;
@@ -137,22 +137,22 @@ bool process_veh_weapons_menu()
 	std::vector<MenuItem<int>*> menuItems;
 	
 	ToggleMenuItem<int>* toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用炸弹舱门视角";
+	toggleItem->caption = "Enable Bomb-Door Camera";
 	toggleItem->toggleValue = &featureBombDoorCamera;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用自动驾驶功能";
+	toggleItem->caption = "Enable Auto-Pilot";
 	toggleItem->toggleValue = &featureAutoPilot;
 	menuItems.push_back(toggleItem);
 
 	MenuItem<int> *chooseTrimColor = new MenuItem<int>();
-	chooseTrimColor->caption = "装饰颜色 ~HUD_COLOUR_GREYLIGHT~(161)";
+	chooseTrimColor->caption = "Trim Color ~HUD_COLOUR_GREYLIGHT~(161)";
 	chooseTrimColor->value = -2;
 	chooseTrimColor->isLeaf = false;
 	menuItems.push_back(chooseTrimColor);
 
-	return draw_generic_menu<int>(menuItems, 0, "飞机炸弹选项", onconfirm_veh_weapons_menu, NULL, NULL, vehicle_menu_interrupt);
+	return draw_generic_menu<int>(menuItems, 0, "Plane Bomb Options", onconfirm_veh_weapons_menu, NULL, NULL, vehicle_menu_interrupt);
 }
 
 void reset_veh_weapons_globals()
@@ -165,7 +165,7 @@ void reset_veh_weapons_globals()
 
 void update_veh_weapons_features()
 {
-	// 公共变量
+	// common variables
 	BOOL bPlayerExists = ENTITY::DOES_ENTITY_EXIST(PLAYER::PLAYER_PED_ID());
 	Player player = PLAYER::PLAYER_ID();
 	Ped playerPed = PLAYER::PLAYER_PED_ID();

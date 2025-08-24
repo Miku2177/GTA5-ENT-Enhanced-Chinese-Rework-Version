@@ -1,0 +1,15 @@
+RegisterFunction:
+
+search text "ymt"
+add breakpoints to all functions using text and having %s.%s
+Run with x64dbg with scyllahide plugin
+Check call if arguments match
+
+
+GenerateVehicleModelList:
+search text "apply data, new player model not valid"
+go to used function
+Move up to find the vehicle list call
+
+GetModelInfo:
+Is the same function as above

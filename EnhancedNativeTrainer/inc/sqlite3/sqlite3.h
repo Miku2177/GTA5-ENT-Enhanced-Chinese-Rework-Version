@@ -1,12 +1,12 @@
 /*
-** 2001年9月15日
+** 2001 September 15
 **
-** 作者声明放弃此源代码的版权。
-** 这里是一份祝福，作为法律声明的替代。
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
 **
-**    愿你行善而非作恶。
-**    愿你获得宽恕并原谅他人。
-**    愿你自由分享，永不贪求多于所予。
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
 **
 *************************************************************************
 ** This header file defines the interface that the SQLite library
@@ -7737,14 +7737,14 @@ SQLITE_API void SQLITE_STDCALL sqlite3_stmt_scanstatus_reset(sqlite3_stmt*);
 #endif /* _SQLITE3_H_ */
 
 /*
-** 2010年8月30日
+** 2010 August 30
 **
-** 作者声明放弃此源代码的版权。
-** 这里是一份祝福，作为法律声明的替代。
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
 **
-**    愿你行善而非作恶。
-**    愿你获得宽恕并原谅他人。
-**    愿你自由分享，永不贪求多于所予。
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
 **
 *************************************************************************
 */

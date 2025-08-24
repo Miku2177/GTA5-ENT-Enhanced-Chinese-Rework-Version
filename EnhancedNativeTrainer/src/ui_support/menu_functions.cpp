@@ -1,35 +1,15 @@
 /*
-这段代码的部分最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-它现在已成为 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include "menu_functions.h"
 #include "..\features\script.h"
-
-int fontHeader = 4, fontItem = 0, fontWanted = 7, fontStatus = 4;// 初始化字体变量，分别用于标题字体、项目字体、通缉字体、状态显示字体
-
-int itemsPerLine = 10;// 初始化菜单显示的项目数
-
-// 菜单布局设置全局变量初始化
-float menuWidth = 350.0f;        // 标题栏和菜单项宽度
-float menuHeight = 50.0f;        // 标题栏高度
-float menuTopOffset = 15.0f;     // 标题栏顶部偏移量
-float menuLeftOffset = 35.0f;    // 标题栏和菜单项左侧偏移量
-float menuTextLeftOffset = 45.0f; // 标题文本左侧偏移量
-float menuItemHeight = 30.0f;    // 菜单项高度
-float menuItemTopOffset = 75.0f; // 菜单项与标题距离
-float menuItemSpacing = 8.0f;    // 菜单项间距
-float menuItemTextOffset = 10.0f; // 菜单项文本偏移量
-
-// 预览图设置全局变量初始化
-float previewPositionThreshold = 500.0f; // 预览图左右判断依据
-float previewResolutionScale = 1920.0f; // 预览图分辨率适配值
-float previewSpacing = 8.0f;           // 预览图间距
 
 std::string centreScreenStatusText;
 DWORD centreScreenStatusTextDrawTicksMax;
@@ -68,23 +48,23 @@ bool is_menu_showing(){
 }
 
 void draw_menu_line(std::string caption, float lineWidth, float lineHeight, float lineTop, float lineLeft, float textLeft, bool active, bool title, bool rescaleText){
-	float text_scale = 0.35;//用于控制文本的缩放比例或大小
-	bool outline = false;//用于控制文本是否有轮廓
-	bool dropShadow = false;//用于控制文本是否带有阴影效果
+	float text_scale = 0.35;
+	bool outline = false;
+	bool dropShadow = false;
 
-	// 校正活动行的值
-	if (active) { // 如果当前项是活动的（被选中或高亮）
-		if (rescaleText) { // 如果需要重新缩放文本
-			text_scale = 0.40; // 设置文本缩放比例为 0.40
+	// correcting values for active line
+	if(active){
+		if(rescaleText){
+			text_scale = 0.40;
 		}
 	}
-	else if (title) { // 如果当前项是标题
-		if (rescaleText) { // 如果需要重新缩放文本
-			text_scale = 0.60; // 设置文本缩放比例为 0.60
+	else if(title){
+		if(rescaleText){
+			text_scale = 0.60;
 		}
 	}
-	else { // 如果上述条件均不满足
-		outline = true; // 启用轮廓（outline）
+	else{
+		outline = true;
 	}
 
 	int screen_w, screen_h;
@@ -92,18 +72,18 @@ void draw_menu_line(std::string caption, float lineWidth, float lineHeight, floa
 
 	textLeft += lineLeft;
 
-	float lineWidthScaled = lineWidth / (float) screen_w; // 行宽
-	float lineTopScaled = lineTop / (float) screen_h; // 行顶部偏移
-	float textLeftScaled = textLeft / (float) screen_w; // 文本左偏移
-	float lineHeightScaled = lineHeight / (float) screen_h; // 行高
+	float lineWidthScaled = lineWidth / (float) screen_w; // line width
+	float lineTopScaled = lineTop / (float) screen_h; // line top offset
+	float textLeftScaled = textLeft / (float) screen_w; // text left offset
+	float lineHeightScaled = lineHeight / (float) screen_h; // line height
 
 	float lineLeftScaled = lineLeft / (float) screen_w;
 
 	float textHeightScaled = (title ? TEXT_HEIGHT_TITLE : TEXT_HEIGHT_NORMAL) / (float) screen_h;
 
-	// 这就是原始脚本中的做法
+	// this is how it's done in original scripts
 
-	// 文本上半部分
+	// text upper part
 	if(title){
 		UI::SET_TEXT_FONT(fontHeader);
 	}
@@ -136,7 +116,7 @@ void draw_menu_line(std::string caption, float lineWidth, float lineHeight, floa
 
 	UI::_DRAW_TEXT(textLeftScaled, lineTopScaled + (0.5f * (lineHeightScaled - textHeightScaled)));
 
-	// 矩形 (菜单)
+	// rect
 	if(active){
 		draw_rect(lineLeftScaled, lineTopScaled, lineWidthScaled, lineHeightScaled,
 				  ENTColor::colsMenu[5].rgba[0], ENTColor::colsMenu[5].rgba[1], ENTColor::colsMenu[5].rgba[2], ENTColor::colsMenu[5].rgba[3]);
@@ -152,7 +132,7 @@ void draw_menu_line(std::string caption, float lineWidth, float lineHeight, floa
 }
 
 void draw_rect(float A_0, float A_1, float A_2, float A_3, int A_4, int A_5, int A_6, int A_7){
-	//这个疯狂的做法是必须的 - X 和 Y 很奇怪
+	//this craziness is required - X and Y are strange
 	GRAPHICS::DRAW_RECT((A_0 + (A_2 * 0.5f)), (A_1 + (A_3 * 0.5f)), A_2, A_3, A_4, A_5, A_6, A_7);
 }
 
@@ -295,10 +275,10 @@ std::string show_keyboard(char* title_id, char* prepopulated_text){
 
 template<class T>
 bool ToggleMenuItem<T>::onConfirm(){
-	//调用父级菜单
+	//call super
 	MenuItem::onConfirm();
 
-	//如果没有值，则切换该值
+	//toggle the value if there is none
 	if(toggleValue != NULL){
 		*toggleValue = !*toggleValue;
 
@@ -378,7 +358,7 @@ bool CashItem<T>::onConfirm(){
 	}
 	STATS::STAT_SET_INT(hash, newAmount, 1);
 	
-	cash >= 0 ? set_status_text("现金增加了！") : set_status_text("现金减少了！");
+	cash >= 0 ? set_status_text("Cash added") : set_status_text("Cash removed");
 
 	return true;
 }
@@ -416,8 +396,8 @@ void CashItem<T>::handleRightPress(){
 }
 
 bool SelectFromListMenuItem::onConfirm(){
-	// 切换是否“锁定”设置
-	// 改变菜单项颜色以表示已锁定
+	// toggle whether we're "locked in" to the setting
+	// change menu item color to signify it's locked in
 	locked = !locked;
 
 	MenuItem::onConfirm();

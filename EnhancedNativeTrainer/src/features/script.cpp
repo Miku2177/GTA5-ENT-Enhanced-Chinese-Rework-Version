@@ -1,20 +1,20 @@
 /*
-部分代码最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-现在是增强原生修改器器项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 和 其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 /*
-  F4					激活
-  小键盘2/8/4/6			在菜单和列表中导航（必须打开数字锁）
-  小键盘5 				选择
-  小键盘0/退格键/F4 		返回
-  小键盘9/3 				使用车辆加速（激活时）
-  小键盘+ 				使用车辆火箭（激活时）
+	F4					activate
+	NUM2/8/4/6			navigate thru the menus and lists (numlock must be on)
+	NUM5 				select
+	NUM0/BACKSPACE/F4 	back
+	NUM9/3 				use vehicle boost when active
+	NUM+ 				use vehicle rockets when active
 */
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -41,8 +41,8 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 #include <psapi.h>
 #include <ctime>
 #include "../io/controller.h"
-#include "../io/config_io.h"
 #include "../rage_thread/rage_thread.h"
+#include "function_resolver.h"
 
 #pragma warning(disable : 4244 4305) // double <-> float conversions
 
@@ -50,7 +50,7 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 
 std::string C_WEATHER_C;
 
-// 自动加载地图内容
+// Load Map Stuff Automatically
 std::string MAP_STUFF;
 
 bool player_died = false;
@@ -105,7 +105,7 @@ bool onlineWarningShown = false;
 
 bool injured_drunk = false;
 
-// 功能
+// features
 bool featurePlayerInvincible = false;
 bool featurePlayerInvincibleUpdated = false;
 bool featureNoFallDamage = false;
@@ -155,7 +155,7 @@ bool featurePlayerStatsUpdated = true;
 bool apply_pressed = false;
 bool featureRagdollIfInjured = false;
 
-// 受伤时布娃娃效果的变量
+// ragdoll if injured variables
 bool been_damaged_by_weapon, ragdoll_task = false;
 float been_damaged_health, been_damaged_armor = -1;
 int ragdoll_seconds = 0; 
@@ -173,7 +173,7 @@ int frozenWantedLevel = 0;
 Vehicle veh_engine;
 Vehicle veh_killed;
 
-// 玩家模型控制，在需要时切换回正常的 NPC 模型
+// player model control, switching on normal ped model when needed
 
 char* player_models[] = { "player_zero", "player_one", "player_two" };
 
@@ -181,57 +181,57 @@ char* mplayer_models[] = { "mp_f_freemode_01", "mp_m_freemode_01" };
 
 const char* CLIPSET_DRUNK = "move_m@drunk@verydrunk";
 
-const std::vector<std::string> GRAVITY_CAPTIONS{ "最低", "0.1x", "0.5x", "0.75x", "1x (正常)" };
+const std::vector<std::string> GRAVITY_CAPTIONS{ "Minimum", "0.1x", "0.5x", "0.75x", "1x (Normal)" };
 const float GRAVITY_VALUES[] = { 0.0f, 0.1f, 0.5f, 0.75f, 1.0f };
 
-const std::vector<std::string> REGEN_CAPTIONS{ "禁止恢复血量", "0.1x", "0.25x", "0.5x", "1x (正常)", "2x", "5x", "10x", "20x", "50x", "100x", "200x", "500x", "1000x" };
+const std::vector<std::string> REGEN_CAPTIONS{ "No Regeneration", "0.1x", "0.25x", "0.5x", "1x (Normal)", "2x", "5x", "10x", "20x", "50x", "100x", "200x", "500x", "1000x" };
 const float REGEN_VALUES[] = { 0.0f, 0.1f, 0.25f, 0.5f, 1.0f, 2.0f, 5.0f, 10.0f, 20.0f, 50.0f, 100.0f, 200.0f, 500.0f, 1000.0f };
 int current_regen_speed = 4;
 bool current_regen_speed_changed = true;
 
-// 玩家生命值
+// Player Health
 int current_player_health = 6;
 bool current_player_health_Changed = true;
 int PedsHealthIndex = 0;
 bool PedsHealthChanged = true;
 
-// 最高通缉等级
+// Max Wanted Level
 int wanted_maxpossible_level = 4;
 bool wanted_maxpossible_level_Changed = true;
 
-// 玩家护甲
-const std::vector<std::string> PLAYER_ARMOR_CAPTIONS{ "关", "0", "15", "20", "30", "40", "50", "100" };
+// Player Armor
+const std::vector<std::string> PLAYER_ARMOR_CAPTIONS{ "OFF", "0", "15", "20", "30", "40", "50", "100" };
 const int PLAYER_ARMOR_VALUES[] = { -1, 0, 15, 20, 30, 40, 50, 100 };
 int current_player_armor = 7;
 bool current_player_armor_Changed = true;
 int current_player_stats = 0;
 bool current_player_stats_Changed = true;
 
-// NPC 被射中效果
+// NPC Ragdoll If Shot
 int current_npc_ragdoll = 0;
 bool current_npc_ragdoll_Changed = true;
 
-// 被射中时摄像机震动
+// Shake Camera If Shot
 int feature_shake_ragdoll = 0;
 bool feature_shake_ragdoll_Changed = true;
 
-// 禁止布娃娃
+// No Ragdoll
 int current_no_ragdoll = 0;
 bool current_no_ragdoll_Changed = true;
 
-// 受伤时跛行
+// Limp If Injured
 int current_limp_if_injured = 0;
 bool current_limp_if_injured_Changed = true;
 
-// 受伤时摇晃相机
+// Shake Camera If Injured
 int feature_shake_injured = 0;
 bool feature_shake_injured_Changed = true;
 bool enable_camera_injured = false;
 int curr_cam = -1;
 int curr_hlth = -1;
 
-// 玩家跑步速度 && 汉考克模式(美国一部电影中的主角)
-const std::vector<std::string> PLAYER_MOVEMENT_CAPTIONS{ "正常", "0.5x", "1x", "2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x" };
+// Player Running Speed && Hancock Mode
+const std::vector<std::string> PLAYER_MOVEMENT_CAPTIONS{ "Normal", "0.5x", "1x", "2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "10x" };
 const double PLAYER_MOVEMENT_VALUES[] = { 0.00, 0.60, 1.00, 2.00, 3.00, 4.00, 5.00, 6.00, 7.00, 8.00, 9.00, 10.00 };
 int current_player_movement = 0;
 bool current_player_movement_Changed = true; 
@@ -241,10 +241,8 @@ int current_player_superjump = 0;
 bool current_player_superjump_Changed = true;
 
 /* Prop unblocker related code - will need to clean up later*/
-//与道具解锁器相关的代码 - 以后需要清理
 
 /*THIS causes ENT not to load when Menyoo is present!*/
-//这会导致 Menyoo 存在时 ENT 无法加载！
 
 void UnlockAllObjects()
 {
@@ -253,7 +251,6 @@ void UnlockAllObjects()
 }
 
 /* End of prop unblocker code*/
-//道具解锁器代码的结束
 
 void onchange_player_health_mode(int value, SelectFromListMenuItem* source){
 	current_player_health = value;
@@ -350,16 +347,17 @@ void onchange_player_escapestars_mode(int value, SelectFromListMenuItem* source)
 	current_escape_stars_Changed = true;
 }
 
-// 获取屏幕的横向和纵向尺寸（以像素为单位）
+// Get the horizontal and vertical screen sizes in pixel
 void GetDesktopResolution(int& horizontal, int& vertical)
 {
 	RECT desktop;
-	const HWND hDesktop = GetDesktopWindow(); // 获取桌面窗口的句柄
-	GetWindowRect(hDesktop, &desktop); // 将屏幕尺寸获取到变量 desktop 中
-	// 左上角的坐标为 (0,0)
-	// 右下角的坐标为
-	horizontal = desktop.right; //横向
-	vertical = desktop.bottom; //纵向
+	const HWND hDesktop = GetDesktopWindow(); // Get a handle to the desktop window
+	GetWindowRect(hDesktop, &desktop); // Get the size of screen to the variable desktop
+	// The top left corner will have coordinates (0,0)
+	// and the bottom right corner will have coordinates
+	// (horizontal, vertical)
+	horizontal = desktop.right;
+	vertical = desktop.bottom;
 }
 
 void check_player_model(){
@@ -373,7 +371,7 @@ void check_player_model(){
 		return;
 	}
 
-	//查明我们是否是默认玩家模型
+	//find out whether we're a default player model
 	bool found = false;
 	Hash playerModel = ENTITY::GET_ENTITY_MODEL(PLAYER::PLAYER_PED_ID());
 	int playerSlot = 0;
@@ -470,15 +468,15 @@ void check_player_model(){
 void invincibility_switching(){
 	featurePlayerInvincible = !featurePlayerInvincible;
 	featurePlayerInvincibleUpdated = true;
-	if (featurePlayerInvincible) set_status_text("无敌 - 已开启！");
-	else set_status_text("无敌 - 已关闭！");
+	if (featurePlayerInvincible) set_status_text("Invincibility ON");
+	else set_status_text("Invincibility OFF");
 	WAIT(100);
 }
 
 void wantedlevel_switching() {
 	featureWantedLevelFrozen = !featureWantedLevelFrozen;
-	if (featureWantedLevelFrozen) set_status_text("通缉等级 - 已冻结！");
-	else set_status_text("通缉等级 - 已解冻！");
+	if (featureWantedLevelFrozen) set_status_text("Wanted Level Frozen");
+	else set_status_text("Wanted Level Unfrozen");
 	WAIT(100);
 }
 
@@ -547,7 +545,7 @@ void engine_kill(){
 	VEHICLE::SET_VEHICLE_ENGINE_ON(veh_killed, false, true, true);
 	VEHICLE::SET_VEHICLE_ENGINE_HEALTH(veh_killed, -4000);
 
-	set_status_text("您因为某种原因！\n损坏了这辆车的发动机！");
+	set_status_text("You have destroyed this vehicle's engine for some reason");
 }
 
 void text_parameters(float s_x, float s_y, int c_r, int c_g, int c_b, int alpha) {
@@ -562,25 +560,24 @@ void text_parameters(float s_x, float s_y, int c_r, int c_g, int c_b, int alpha)
 	UI::SET_TEXT_OUTLINE();
 }
 
-// 更新所有可以被游戏关闭的功能， 每帧游戏时调用一次
-void update_features() {
-	// 常用变量
+// Updates all features that can be turned off by the game, being called each game frame
+void update_features(){
+	// common variables
 	Player player = PLAYER::PLAYER_ID();
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
 	BOOL bPlayerExists = ENTITY::DOES_ENTITY_EXIST(playerPed);
 
-	// 注释掉阻止进入线上模式的代码
-	/*if (NETWORK::NETWORK_IS_GAME_IN_PROGRESS()) {
-		if (!onlineWarningShown) {
-			set_status_text("~HUD_COLOUR_MENU_YELLOW~ENT ~HUD_COLOUR_WHITE~禁止在线使用！");
+	if(NETWORK::NETWORK_IS_GAME_IN_PROGRESS()){
+		if(!onlineWarningShown){
+			set_status_text("~HUD_COLOUR_MENU_YELLOW~ENT ~HUD_COLOUR_WHITE~is not for use online");
 			onlineWarningShown = true;
 		}
 		WAIT(0);
 		return;
 	}
-	else {
+	else{
 		onlineWarningShown = false;
-	}*/
+	}
 	/*
 	GAMEPLAY::TERMINATE_ALL_SCRIPTS_WITH_THIS_NAME("shop_controller");
 
@@ -685,7 +682,7 @@ void update_features() {
 		setAirbrakeRelatedInputToBlocked(false);
 	}
 
-	// 第一人称死亡视角
+	// First Person Death Camera
 	if (featureFirstPersonDeathCamera) {
 		Vector3 playerPosition = ENTITY::GET_ENTITY_COORDS(PLAYER::PLAYER_PED_ID(), true);
 		Vector3 curRotation = ENTITY::GET_ENTITY_ROTATION(PLAYER::PLAYER_PED_ID(), 2);
@@ -708,7 +705,7 @@ void update_features() {
 				ENTITY::SET_ENTITY_ALPHA(PLAYER::PLAYER_PED_ID(), 0, 0);
 			}
 		}
-		if (CAM::DOES_CAM_EXIST(DeathCam)) { // 摄像机旋转
+		if (CAM::DOES_CAM_EXIST(DeathCam)) { // camera rotation
 			Vector3 rot_cam = CAM::GET_CAM_ROT(DeathCam, 2);
 			if ((CONTROLS::IS_CONTROL_PRESSED(2, 34) || CONTROLS::IS_CONTROL_PRESSED(2, 35) || CONTROLS::IS_CONTROL_PRESSED(2, 32) || CONTROLS::IS_CONTROL_PRESSED(2, 33)) && first_person_rotate == false) {
 				CAM::DESTROY_CAM(DeathCam, true);
@@ -720,10 +717,10 @@ void update_features() {
 				CAM::_SET_CAM_DOF_FOCUS_DISTANCE_BIAS(DeathCam, 1.0);
 				first_person_rotate = true;
 			}
-			if (CONTROLS::IS_CONTROL_PRESSED(2, 34)) rot_cam.z = rot_cam.z + 2; // 仅左侧
-			if (CONTROLS::IS_CONTROL_PRESSED(2, 35)) rot_cam.z = rot_cam.z - 2; // 仅右侧
-			if (CONTROLS::IS_CONTROL_PRESSED(2, 32)) rot_cam.x = rot_cam.x + 2; // 仅上侧
-			if (CONTROLS::IS_CONTROL_PRESSED(2, 33)) rot_cam.x = rot_cam.x - 2; // 仅下侧
+			if (CONTROLS::IS_CONTROL_PRESSED(2, 34)) rot_cam.z = rot_cam.z + 2; // left only
+			if (CONTROLS::IS_CONTROL_PRESSED(2, 35)) rot_cam.z = rot_cam.z - 2; // right only
+			if (CONTROLS::IS_CONTROL_PRESSED(2, 32)) rot_cam.x = rot_cam.x + 2; // up only
+			if (CONTROLS::IS_CONTROL_PRESSED(2, 33)) rot_cam.x = rot_cam.x - 2; // down only
 			CAM::SET_CAM_ROT(DeathCam, rot_cam.x, rot_cam.y, rot_cam.z, 2);
 		}
 	}
@@ -740,7 +737,7 @@ void update_features() {
 		}
 	}
 
-	// 手动复活
+	// Manual Respawn
 	if (featureNoAutoRespawn && GAMEPLAY::GET_MISSION_FLAG() == 0) {
 		if ((ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID()) || PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), 1)) && player_died == false) {
 			manual_pressed = false;
@@ -754,7 +751,7 @@ void update_features() {
 			GAMEPLAY::TERMINATE_ALL_SCRIPTS_WITH_THIS_NAME("respawn_controller");
 			manual_instant = true;
 		}
-		// 摄像机旋转
+		// camera rotation
 		if (ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID()) || PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), 1)) {
 			Vector3 playerPosition = ENTITY::GET_ENTITY_COORDS(PLAYER::PLAYER_PED_ID(), true);
 			if (!CAM::DOES_CAM_EXIST(DeathCamM) && (CONTROLS::IS_CONTROL_PRESSED(2, 34) || CONTROLS::IS_CONTROL_PRESSED(2, 35) || CONTROLS::IS_CONTROL_PRESSED(2, 32) || CONTROLS::IS_CONTROL_PRESSED(2, 33)) && first_person_rotate == false) {
@@ -770,7 +767,7 @@ void update_features() {
 				CAM::SET_CAM_ACTIVE(DeathCamM, true);
 				GAMEPLAY::SET_TIME_SCALE(1.0f);
 			}
-			if (CAM::DOES_CAM_EXIST(DeathCamM)) { // 摄像机旋转
+			if (CAM::DOES_CAM_EXIST(DeathCamM)) { // camera rotation
 				Vector3 rot_cam = CAM::GET_CAM_ROT(DeathCamM, 2);
 				ENTITY::FREEZE_ENTITY_POSITION(temp_c_object, true);
 				if ((CONTROLS::IS_CONTROL_PRESSED(2, 34) || CONTROLS::IS_CONTROL_PRESSED(2, 35) || CONTROLS::IS_CONTROL_PRESSED(2, 32) || CONTROLS::IS_CONTROL_PRESSED(2, 33)) && first_person_rotate == false) {
@@ -781,10 +778,10 @@ void update_features() {
 					CAM::_SET_CAM_DOF_FOCUS_DISTANCE_BIAS(DeathCamM, 1.0);
 					first_person_rotate = true;
 				}
-				if (CONTROLS::IS_CONTROL_PRESSED(2, 34)) rot_cam.z = rot_cam.z + 2; // 仅左侧
-				if (CONTROLS::IS_CONTROL_PRESSED(2, 35)) rot_cam.z = rot_cam.z - 2; // 仅右侧
-				if (CONTROLS::IS_CONTROL_PRESSED(2, 32)) rot_cam.x = rot_cam.x + 2; // 仅上侧
-				if (CONTROLS::IS_CONTROL_PRESSED(2, 33)) rot_cam.x = rot_cam.x - 2; // 仅下侧
+				if (CONTROLS::IS_CONTROL_PRESSED(2, 34)) rot_cam.z = rot_cam.z + 2; // left only
+				if (CONTROLS::IS_CONTROL_PRESSED(2, 35)) rot_cam.z = rot_cam.z - 2; // right only
+				if (CONTROLS::IS_CONTROL_PRESSED(2, 32)) rot_cam.x = rot_cam.x + 2; // up only
+				if (CONTROLS::IS_CONTROL_PRESSED(2, 33)) rot_cam.x = rot_cam.x - 2; // down only
 				CAM::SET_CAM_ROT(DeathCamM, rot_cam.x, rot_cam.y, rot_cam.z, 2);
 			}
 		}
@@ -844,7 +841,7 @@ void update_features() {
 		}
 	}
 		
-	// 死亡/被捕后立即复活
+	// Instant Respawn On Death/Arrest
 	if (featureRespawnsWhereDied && GAMEPLAY::GET_MISSION_FLAG() == 0 && manual_instant == false && detained == false && alert_level == 0) {
 		if (ENTITY::IS_ENTITY_DEAD(playerPed) || PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), 0)) {
 			player_died = true;
@@ -904,7 +901,7 @@ void update_features() {
 
 	update_time_features(player);
 
-	// 无敌
+	// Invincible
 	if(featurePlayerInvincibleUpdated){
 		if(bPlayerExists && !featurePlayerInvincible){
 			if (getGameVersion() < VER_1_0_678_1_STEAM || getGameVersion() < VER_1_0_678_1_NOSTEAM) PLAYER::SET_PLAYER_INVINCIBLE(player, FALSE);
@@ -919,14 +916,14 @@ void update_features() {
 		if (getGameVersion() >= VER_1_0_678_1_STEAM || getGameVersion() >= VER_1_0_678_1_NOSTEAM) PLAYER::_0x733A643B5B0C53C1(player, TRUE);
 	}
 	
-	// 防火
+	// Fire Proof
 	if (featureFireProof/* && !featurePlayerInvincible*/) {
 		Vector3 my_coords = ENTITY::GET_ENTITY_COORDS(PLAYER::PLAYER_PED_ID(), 0);
 		FIRE::STOP_FIRE_IN_RANGE(my_coords.x, my_coords.y, my_coords.z, 2);
 		if (FIRE::IS_ENTITY_ON_FIRE(PLAYER::PLAYER_PED_ID())) FIRE::STOP_ENTITY_FIRE(PLAYER::PLAYER_PED_ID());
 	}
 
-	// 无摔落伤害
+	// No Fall Damage
 	if (featureNoFallDamage && !featurePlayerInvincible) {
 		if (PED::IS_PED_FALLING(playerPed) || PED::IS_PED_IN_PARACHUTE_FREE_FALL(playerPed)) falling_down = true;
 		if (falling_down) PLAYER::SET_PLAYER_INVINCIBLE(player, TRUE);
@@ -938,7 +935,7 @@ void update_features() {
 		}
 	}
 
-	// 启用默认武器
+	// enable default weapon
 	if (def_w == false) {
 		CONTROLS::_SET_CONTROL_NORMAL(0, 159, 1); // 160
 		WAIT(10);
@@ -946,13 +943,13 @@ void update_features() {
 		def_w = true;
 	}
 
-	// 获取自上次死亡/被捕以来的时间
+	// Get time since last death/arrest
 	if (ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID())) time_since_d = -1;
 	if (PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), 0)) time_since_a = -1;
 	if (time_since_d < 7000 && !ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID())) time_since_d = PLAYER::GET_TIME_SINCE_LAST_DEATH();
 	if (time_since_a < 7000 && !PLAYER::IS_PLAYER_BEING_ARRESTED(PLAYER::PLAYER_ID(), 0)) time_since_a = PLAYER::GET_TIME_SINCE_LAST_ARREST();
 
-	// 禁用点火
+	// Disable Ignition
 	if ((!featureDisableIgnition || (featureDisableIgnition && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0))) && veh_engine_t == true) {
 		if (NPC_RAGDOLL_VALUES[EngineRunningIndex] == 0) VEHICLE::SET_VEHICLE_ENGINE_ON(veh_engine, false, true, false);
 		veh_engine_t = false;
@@ -973,7 +970,7 @@ void update_features() {
 		}
 	}
 
-	// 禁用引擎
+	// disable engine
 	if (engine_running == false && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) VEHICLE::SET_VEHICLE_ENGINE_ON(veh_engine, engine_running, false, true);
 
 	if (featureWantedLevelFrozen){
@@ -991,7 +988,7 @@ void update_features() {
 		featureWantedLevelFrozenUpdated = true;
 	}
 	
-	// 禁止警察直升机
+	// No Police Helicopters
 	if (featureWantedLevelNoPHeli) {
 		GAMEPLAY::ENABLE_DISPATCH_SERVICE(2, false);
 		GAMEPLAY::ENABLE_DISPATCH_SERVICE(12, false);
@@ -1003,7 +1000,7 @@ void update_features() {
 		featureWantedLevelNoPHeliUpdated = false;
 	}
 
-	// 无路障
+	// No Road Blocks
 	if (featureWantedNoPRoadB) {
 		GAMEPLAY::ENABLE_DISPATCH_SERVICE(8, false);
 		featureWantedNoPRoadBUpdated = true;
@@ -1013,7 +1010,7 @@ void update_features() {
 		featureWantedNoPRoadBUpdated = false;
 	}
 
-	// 禁止警察船只
+	// No Police Boats
 	if (featureWantedLevelNoPBoats) {
 		GAMEPLAY::ENABLE_DISPATCH_SERVICE(13, false);
 		featureWantedLevelNoPBoatsUpdated = true;
@@ -1023,7 +1020,7 @@ void update_features() {
 		featureWantedLevelNoPBoatsUpdated = false;
 	}
 
-	// 禁止特警车辆
+	// No SWAT Vehicles
 	if (featureWantedLevelNoSWATVehicles) {
 		GAMEPLAY::ENABLE_DISPATCH_SERVICE(4, false);
 		featureWantedLevelNoSWATVehiclesUpdated = true;
@@ -1034,7 +1031,7 @@ void update_features() {
 		featureWantedLevelNoSWATVehiclesUpdated = false;
 	}
 
-	// 警方追捕行动减弱
+	// Less Aggressive Police Pursuit
 	if (featureWantedLevelNoPRam && PLAYER::GET_PLAYER_WANTED_LEVEL(PLAYER::PLAYER_ID()) > 0) {
 		Vector3 my_cor = ENTITY::GET_ENTITY_COORDS(playerPed, true);
 		float my_speed = ENTITY::GET_ENTITY_SPEED(PED::GET_VEHICLE_PED_IS_USING(playerPed));
@@ -1056,14 +1053,14 @@ void update_features() {
 		}
 	}
 
-	// 禁止鸣笛叫出租车
+	// No Whistling For Taxi
 	if (NoTaxiWhistling && PLAYER::IS_PLAYER_CONTROL_ON(PLAYER::PLAYER_ID()) && !UI::IS_HELP_MESSAGE_BEING_DISPLAYED() && GAMEPLAY::GET_MISSION_FLAG() == 0) CONTROLS::DISABLE_CONTROL_ACTION(2, 51, 1);
 		
-	// 悬浮
+	// Levitation
 	if (VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex] < 1) lev_message = false;
 	if (VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex] > 0/*featureLevitation*/) {
 		if (lev_message == false) {
-			set_status_text("按住空格使用您的力量！");
+			set_status_text("Hold 'Jump' to use your force.");
 			lev_message = true;
 		}
 		Vector3 my_coords = ENTITY::GET_ENTITY_COORDS(playerPed, true);
@@ -1104,7 +1101,7 @@ void update_features() {
 					}
 				}
 			}
-		} // 结束整数（行人）
+		} // end of int (peds)
 		if (CONTROLS::IS_CONTROL_PRESSED(2, 22)) {
 			Object surr_objects[arrSize_punch];
 			int count_surr_o = worldGetAllObjects(surr_objects, arrSize_punch);
@@ -1118,7 +1115,7 @@ void update_features() {
 				if (tempgot_z < 0) tempgot_z = (tempgot_z * -1);
 				if (tempgot_x < VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex] && tempgot_y < VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex] && tempgot_z < VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex]) 
 					ENTITY::APPLY_FORCE_TO_ENTITY(surr_objects[i], 1, 0, 0, 0.6, 0, 0, 0, true, false, true, true, true, true);
-			} // 结束整数（物体）
+			} // end of int (objects)
 			Vehicle surr_vehicles[arrSize_punch];
 			int count_surr_v = worldGetAllVehicles(surr_vehicles, arrSize_punch);
 			for (int i = 0; i < count_surr_v; i++) {
@@ -1131,11 +1128,11 @@ void update_features() {
 				if (tempgot_z < 0) tempgot_z = (tempgot_z * -1);
 				if (tempgot_x < VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex] && tempgot_y < VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex] && tempgot_z < VEH_TURN_SIGNALS_ANGLE_VALUES[LevitationIndex]) 
 					ENTITY::APPLY_FORCE_TO_ENTITY(surr_vehicles[i], 1, 0, 0, 0.6, 0, 0, 0, true, false, true, true, true, true);
-			} // 结束整数（车辆）
+			} // end of int (vehicles)
 		}
 	}
 
-	// 汉考克模式
+	// Hancock Mode
 	if (PLAYER_MOVEMENT_VALUES[current_player_jumpfly] > 0.00 && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, 1)) {
 		Vector3 CamRot = CAM::GET_GAMEPLAY_CAM_ROT(2);
 		float p_force = PLAYER_MOVEMENT_VALUES[current_player_jumpfly];
@@ -1154,21 +1151,21 @@ void update_features() {
 			if (jumpfly_tick > 5) {
 				if (!ENTITY::IS_ENTITY_PLAYING_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 3)) {
 					AI::CLEAR_PED_TASKS_IMMEDIATELY(PLAYER::PLAYER_PED_ID());
-					AI::TASK_PLAY_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 8.0, 0.0, -1, 9, 0, 0, 0, 0); // free_idle 自由待机
+					AI::TASK_PLAY_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 8.0, 0.0, -1, 9, 0, 0, 0, 0); // free_idle
 				}
 				ENTITY::APPLY_FORCE_TO_ENTITY(PLAYER::PLAYER_PED_ID(), 1, 0, 0, p_force, 0, 0, 0, true, false, true, true, true, true);
 			}
 			if (ENTITY::IS_ENTITY_PLAYING_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 3)) skydiving = true;
 		}
-		if (CONTROLS::IS_CONTROL_PRESSED(2, 32) && skydiving == true) { // 仅向上移动
+		if (CONTROLS::IS_CONTROL_PRESSED(2, 32) && skydiving == true) { // MoveUpOnly
 			if (!ENTITY::IS_ENTITY_PLAYING_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 3)) {
 				AI::CLEAR_PED_TASKS_IMMEDIATELY(PLAYER::PLAYER_PED_ID());
-				AI::TASK_PLAY_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 8.0, 0.0, -1, 9, 0, 0, 0, 0); // free_idle 自由待机
+				AI::TASK_PLAY_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 8.0, 0.0, -1, 9, 0, 0, 0, 0); // free_idle
 			}
 			ENTITY::SET_ENTITY_ROTATION(PLAYER::PLAYER_PED_ID(), CamRot.x, CamRot.y, CamRot.z, 1, true);
 			ENTITY::APPLY_FORCE_TO_ENTITY(PLAYER::PLAYER_PED_ID(), 1, v_x / 8, v_y / 8, v_z / 8, 0, 0, 0, true, false, true, true, true, true);
 		}
-		if (CONTROLS::IS_CONTROL_PRESSED(2, 33) && skydiving == true) { // 仅向下移动
+		if (CONTROLS::IS_CONTROL_PRESSED(2, 33) && skydiving == true) { // MoveDownOnly
 			jumpfly_secs_passed = clock() / CLOCKS_PER_SEC;
 			if (((clock() / (CLOCKS_PER_SEC / 1000)) - jumpfly_secs_curr) != 0) {
 				jumpfly_tick = jumpfly_tick + 1;
@@ -1176,7 +1173,7 @@ void update_features() {
 			}
 			if (!ENTITY::IS_ENTITY_PLAYING_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 3)) {
 				AI::CLEAR_PED_TASKS_IMMEDIATELY(PLAYER::PLAYER_PED_ID());
-				AI::TASK_PLAY_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 8.0, 0.0, -1, 9, 0, 0, 0, 0); // free_idle 自由待机
+				AI::TASK_PLAY_ANIM(PLAYER::PLAYER_PED_ID(), "skydive@base", "free_idle", 8.0, 0.0, -1, 9, 0, 0, 0, 0); // free_idle
 			}
 			ENTITY::SET_ENTITY_ROTATION(PLAYER::PLAYER_PED_ID(), CamRot.x, CamRot.y, CamRot.z, 1, true);
 			if (jumpfly_tick < 30) ENTITY::FREEZE_ENTITY_POSITION(PLAYER::PLAYER_PED_ID(), false); 
@@ -1185,17 +1182,17 @@ void update_features() {
 				ENTITY::APPLY_FORCE_TO_ENTITY(PLAYER::PLAYER_PED_ID(), 1, -(v_x / 8), -(v_y / 8), -(v_z / 8), 0, 0, 0, true, false, true, true, true, true);
 			}
 		}
-		if (CONTROLS::IS_CONTROL_PRESSED(2, 34) && skydiving == true) { // 仅向左移动
+		if (CONTROLS::IS_CONTROL_PRESSED(2, 34) && skydiving == true) { // MoveLeftOnly
 			curLocation.x += ((PLAYER_MOVEMENT_VALUES[current_player_jumpfly] / 2) * sin(degToRad(CamRot.z + 90)) * -1.0f);
 			curLocation.y += ((PLAYER_MOVEMENT_VALUES[current_player_jumpfly] / 2) * cos(degToRad(CamRot.z + 90)));
 			ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, curLocation.x, curLocation.y, curLocation.z, 1, 1, 1);
 		}
-		if (CONTROLS::IS_CONTROL_PRESSED(2, 35) && skydiving == true) { // 仅向右移动
+		if (CONTROLS::IS_CONTROL_PRESSED(2, 35) && skydiving == true) { // MoveRightOnly
 			curLocation.x += ((PLAYER_MOVEMENT_VALUES[current_player_jumpfly] / 2) * sin(degToRad(CamRot.z - 90)) * -1.0f);
 			curLocation.y += ((PLAYER_MOVEMENT_VALUES[current_player_jumpfly] / 2) * cos(degToRad(CamRot.z - 90)));
 			ENTITY::SET_ENTITY_COORDS_NO_OFFSET(playerPed, curLocation.x, curLocation.y, curLocation.z, 1, 1, 1);
 		}
-		if (CONTROLS::IS_CONTROL_RELEASED(2, 33) && CONTROLS::IS_CONTROL_RELEASED(2, 22)) { // 仅向下移动 && 跳跃
+		if (CONTROLS::IS_CONTROL_RELEASED(2, 33) && CONTROLS::IS_CONTROL_RELEASED(2, 22)) { // MoveDownOnly && Jump
 			ENTITY::FREEZE_ENTITY_POSITION(PLAYER::PLAYER_PED_ID(), false);
 			jumpfly_tick = 0; 
 		}
@@ -1216,17 +1213,17 @@ void update_features() {
 		if (ENTITY::IS_ENTITY_PLAYING_ANIM(PLAYER::PLAYER_PED_ID(), "move_strafe@roll_fps", "combatroll_fwd_p1_00", 3)) skydiving = false;
 	}
 
-	// 玩家可以被爆头
+	// Player Can Be Headshot
 	if (featurePlayerCanBeHeadshot && !featurePlayerInvincible) {
-		Vector3 coords_bullet_p = PED::GET_PED_BONE_COORDS(playerPed, 31086, 0, 0, 0); // 头骨
+		Vector3 coords_bullet_p = PED::GET_PED_BONE_COORDS(playerPed, 31086, 0, 0, 0); // head bone
 		if (WEAPON::HAS_ENTITY_BEEN_DAMAGED_BY_WEAPON(playerPed, 0, 2) && GAMEPLAY::HAS_BULLET_IMPACTED_IN_AREA(coords_bullet_p.x, coords_bullet_p.y, coords_bullet_p.z, 0.1, 0, 0)) {
 			PED::CLEAR_PED_LAST_DAMAGE_BONE(playerPed);
 			ENTITY::CLEAR_ENTITY_LAST_DAMAGE_ENTITY(playerPed);
 			ENTITY::SET_ENTITY_HEALTH(PLAYER::PLAYER_PED_ID(), 0);
 		}
 	}
-  
-	// 受伤玩家移动方式
+
+	// Injured Player Movement
 	if (injured_m == -2) injured_m = current_limp_if_injured;
 	if (current_limp_if_injured == 0 && injured_m != 0) injured_m = current_limp_if_injured;
 
@@ -1235,16 +1232,16 @@ void update_features() {
 		float curr_set_h = PLAYER_HEALTH_VALUES[current_player_health] - 100;
 		if (NPC_RAGDOLL_VALUES[current_limp_if_injured] > 0 && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, true)) {
 			if (injured_m != current_limp_if_injured) {
-				if (current_limp_if_injured == 1) set_status_text("轻度瘸腿走路！");
-					if (current_limp_if_injured == 2) set_status_text("重度瘸腿走路！");
+				if (current_limp_if_injured == 1) set_status_text("Walking Style 1");
+					if (current_limp_if_injured == 2) set_status_text("Walking Style 2");
 					injured_m = current_limp_if_injured;
 					enable_camera_injured = false;
 			}
 
 			if (NPC_RAGDOLL_VALUES[current_limp_if_injured] == 1 && !STREAMING::HAS_ANIM_DICT_LOADED("move_injured_generic")) STREAMING::REQUEST_ANIM_DICT("move_injured_generic"); // move_m@injured
-				Vector3 coords_calf_l = PED::GET_PED_BONE_COORDS(playerPed, 63931, 0, 0, 0); // 左小腿
-				Vector3 coords_calf_r = PED::GET_PED_BONE_COORDS(playerPed, 36864, 0, 0, 0); // 右小腿
-			Vector3 coords_pelvis = PED::GET_PED_BONE_COORDS(playerPed, 11816, 0, 0, 0); // 骨盆
+				Vector3 coords_calf_l = PED::GET_PED_BONE_COORDS(playerPed, 63931, 0, 0, 0); // left calf
+				Vector3 coords_calf_r = PED::GET_PED_BONE_COORDS(playerPed, 36864, 0, 0, 0); // right calf
+			Vector3 coords_pelvis = PED::GET_PED_BONE_COORDS(playerPed, 11816, 0, 0, 0); // pelvis
 			if (WEAPON::HAS_ENTITY_BEEN_DAMAGED_BY_WEAPON(playerPed, 0, 2) && (GAMEPLAY::HAS_BULLET_IMPACTED_IN_AREA(coords_calf_l.x, coords_calf_l.y, coords_calf_l.z, 0.4, 0, 0) ||
 				GAMEPLAY::HAS_BULLET_IMPACTED_IN_AREA(coords_calf_r.x, coords_calf_r.y, coords_calf_r.z, 0.4, 0, 0) || GAMEPLAY::HAS_BULLET_IMPACTED_IN_AREA(coords_pelvis.x, coords_pelvis.y, coords_pelvis.z, 0.2, 0, 0))) {
 				been_injured = true;
@@ -1259,8 +1256,8 @@ void update_features() {
 				injured_drunk = true;
 			}
 			if (((!featurePlayerLife && curr_health < 30) ||
-				(featurePlayerLife && curr_health < ((30.0 / 100.0) * curr_set_h))) && !ENTITY::IS_ENTITY_DEAD(playerPed)) CONTROLS::DISABLE_CONTROL_ACTION(2, 22, 1); // 跳
-			if ((!featurePlayerLife && curr_health < 50) || (featurePlayerLife && curr_health < ((50.0 / 100.0) * curr_set_h)) || been_injured == true) CONTROLS::DISABLE_CONTROL_ACTION(2, 21, 1); // 短跑
+				(featurePlayerLife && curr_health < ((30.0 / 100.0) * curr_set_h))) && !ENTITY::IS_ENTITY_DEAD(playerPed)) CONTROLS::DISABLE_CONTROL_ACTION(2, 22, 1); // jump
+			if ((!featurePlayerLife && curr_health < 50) || (featurePlayerLife && curr_health < ((50.0 / 100.0) * curr_set_h)) || been_injured == true) CONTROLS::DISABLE_CONTROL_ACTION(2, 21, 1); // sprint
 			if ((!featurePlayerLife && curr_health > 79) || (featurePlayerLife && curr_health > ((80.0 / 100.0) * curr_set_h) - 1) || (time_since_d > 100 && time_since_d < 5000) ||
 				(time_since_a > 100 && time_since_a < 5000) || (injured_drunk == true && NPC_RAGDOLL_VALUES[current_limp_if_injured] != 2) || player_died == true) {
 				PED::CLEAR_PED_LAST_DAMAGE_BONE(playerPed);
@@ -1283,7 +1280,7 @@ void update_features() {
 		}
 	}
 
-	// 可以在公寓里跑步
+	// Can Run In Apartments
 	if (featurePlayerRunApartments && GAMEPLAY::GET_MISSION_FLAG() == 0 && !UI::IS_HELP_MESSAGE_BEING_DISPLAYED()) {
 		int curr_int = INTERIOR::GET_INTERIOR_AT_COORDS(ENTITY::GET_ENTITY_COORDS(playerPed, true).x, ENTITY::GET_ENTITY_COORDS(playerPed, true).y, ENTITY::GET_ENTITY_COORDS(playerPed, true).z);
 		if (!INTERIOR::_ARE_COORDS_COLLIDING_WITH_EXTERIOR(ENTITY::GET_ENTITY_COORDS(playerPed, true).x, ENTITY::GET_ENTITY_COORDS(playerPed, true).y, ENTITY::GET_ENTITY_COORDS(playerPed, true).z) &&
@@ -1331,14 +1328,14 @@ void update_features() {
 		if (we_have_troubles == true && PLAYER::GET_PLAYER_WANTED_LEVEL(PLAYER::PLAYER_ID()) == 0) we_have_troubles = false;
 	}
 	
-	// 最大通缉等级
+	// Max Wanted Level
 	if (PLAYER::GET_PLAYER_WANTED_LEVEL(PLAYER::PLAYER_ID()) > VEH_STARSPUNISH_VALUES[wanted_maxpossible_level]) {
 		PLAYER::SET_MAX_WANTED_LEVEL(5);
 		PLAYER::SET_PLAYER_WANTED_LEVEL(PLAYER::PLAYER_ID(), VEH_STARSPUNISH_VALUES[wanted_maxpossible_level], 0);
 		PLAYER::SET_PLAYER_WANTED_LEVEL_NOW(PLAYER::PLAYER_ID(), 0);
 	}
 
-  ////////////////////////////////////////// 玩家数据 ///////////////////////////////////////////////////
+	////////////////////////////////////// PLAYER DATA ////////////////////////////////////////////////
 	if ((bPlayerExists && featurePlayerLife && featurePlayerLifeUpdated) || (bPlayerExists && featurePlayerLife && PLAYER_ARMOR_VALUES[current_player_stats] > -1 && featurePlayerStatsUpdated) || apply_pressed == true || player_d_armour == true) {
 		if (!STREAMING::IS_PLAYER_SWITCH_IN_PROGRESS()) { 
 			if ((featurePlayerLifeUpdated && !ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID())) || (player_d_armour == true && !ENTITY::IS_ENTITY_DEAD(PLAYER::PLAYER_PED_ID()))) {
@@ -1402,7 +1399,7 @@ void update_features() {
 		if (detained == false && alert_level == 0) player_died = false;
 	}
 	
-	if ((playerPed != oldplayerPed) || DLC2::GET_IS_LOADING_SCREEN_ACTIVE()) { // 如果你切换角色，你的生命值和护甲将会恢复
+	if ((playerPed != oldplayerPed) || DLC2::GET_IS_LOADING_SCREEN_ACTIVE()) { // If You Switch Character Your Health & Armor Will Be Restored
 		featurePlayerLifeUpdated = true;
 		featurePlayerStatsUpdated = true;
 		if (!featurePlayerLife) dynamic_loading = true;
@@ -1427,13 +1424,13 @@ void update_features() {
 	}
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 
-	///// <--- 监狱 逃脱 /////
+	///// <--- PRISON BREAK /////
 	prison_break(); 
 	
-	///// <--- 通缉 逃犯 /////
+	///// <--- WANTED FUGITIVE /////
 	most_wanted(); 
 
-	// 警方忽视玩家
+	// Police Ignore Player
 	if(featurePlayerIgnoredByPolice){
 		if(bPlayerExists){
 			PLAYER::SET_POLICE_IGNORE_PLAYER(player, true);
@@ -1445,14 +1442,14 @@ void update_features() {
 		}
 	}
 
-	// 玩家特殊能力
+	// Player Special Ability
 	if(featurePlayerUnlimitedAbility){
 		if(bPlayerExists){
 			PLAYER::SPECIAL_ABILITY_FILL_METER(player, 1);
 		}
 	}
 
-	// 播放器无噪音
+	// Player No Noise
 	if(bPlayerExists && !featurePlayerNoNoise){
 		PLAYER::SET_PLAYER_NOISE_MULTIPLIER(player, 1.0);
 	}
@@ -1460,7 +1457,7 @@ void update_features() {
 		PLAYER::SET_PLAYER_NOISE_MULTIPLIER(player, 0.0);
 	}
 
-	// 玩家快速游泳
+	// Player Fast Swim
 	if(bPlayerExists && !featurePlayerFastSwim){
 		PLAYER::SET_SWIM_MULTIPLIER_FOR_PLAYER(player, 1.0);
 	}
@@ -1468,13 +1465,13 @@ void update_features() {
 		PLAYER::SET_SWIM_MULTIPLIER_FOR_PLAYER(player, 1.49);
 	}
 
-	// 玩家快速奔跑
+	// Player Fast Run 
 	if(featurePlayerFastRun){
 		if (AI::IS_PED_SPRINTING(PLAYER::PLAYER_PED_ID())) PLAYER::SET_RUN_SPRINT_MULTIPLIER_FOR_PLAYER(player, 1.49);
 		else PLAYER::SET_RUN_SPRINT_MULTIPLIER_FOR_PLAYER(player, 1.0);
 	}
 
-	// 玩家奔跑速度
+	// Player Running Speed
 	if (PLAYER_MOVEMENT_VALUES[current_player_movement] > 0.00) {
 		if (AI::IS_PED_SPRINTING(PLAYER::PLAYER_PED_ID())) PED::SET_PED_MOVE_RATE_OVERRIDE(playerPed, PLAYER_MOVEMENT_VALUES[current_player_movement]);
 		else PED::SET_PED_MOVE_RATE_OVERRIDE(playerPed, 1.00);
@@ -1482,7 +1479,7 @@ void update_features() {
 		//if (CONTROLS::IS_CONTROL_RELEASED(2, 21) && PED::IS_PED_ON_FOOT(playerPed)) PED::SET_PED_MOVE_RATE_OVERRIDE(playerPed, 1.00);
 	}
 
-	// 玩家超级跳跃
+	// Player Super Jump
 	if(PLAYER_MOVEMENT_VALUES[current_player_superjump] > 0.00) {
 		float my_player_speed = ENTITY::GET_ENTITY_SPEED(playerPed);
 		if(bPlayerExists && my_player_speed > 1.0 && !PED::IS_PED_RAGDOLL(playerPed) && PED::IS_PED_ON_FOOT(playerPed)){
@@ -1511,14 +1508,14 @@ void update_features() {
 		}
 	}
 
-	// 禁止布娃娃
+	// No Radgoll
 	if (noragdoll_m == -2) noragdoll_m = current_no_ragdoll;
 	if (current_no_ragdoll == 0 && noragdoll_m != 0) noragdoll_m = current_no_ragdoll;
 
 	if (NPC_RAGDOLL_VALUES[current_no_ragdoll] > 0 && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, true)) {
 		if (noragdoll_m != current_no_ragdoll) {
-			if (current_no_ragdoll == 1) set_status_text("坠落动作已启用！");
-			if (current_no_ragdoll == 2) set_status_text("坠落动作已禁用！");
+			if (current_no_ragdoll == 1) set_status_text("Falling animation is enabled");
+			if (current_no_ragdoll == 2) set_status_text("Falling animation is disabled");
 			noragdoll_m = current_no_ragdoll;
 		}
 		if(bPlayerExists){
@@ -1541,7 +1538,7 @@ void update_features() {
 		}
 	}
 
-	// 被射中时布娃娃效果
+	// Ragdoll If Shot
 	if (featureRagdollIfInjured || VEH_TURN_SIGNALS_ACCELERATION_VALUES[feature_shake_ragdoll] > 0) {
 		//auto addr = getScriptHandleBaseAddress(playerPed);
 		//float curr_health = (*(float *)(addr + 0x280)) - 100;
@@ -1571,7 +1568,7 @@ void update_features() {
 		
 		if (been_damaged_by_weapon == true) {
 			if (featureRagdollIfInjured) {
-				int time1 = (rand() % 3000 + 0); // 上边距 + 下边距
+				int time1 = (rand() % 3000 + 0); // UP MARGIN + DOWN MARGIN
 				int time2 = (rand() % 3000 + 0);
 				int ragdollType = (rand() % 3 + 0);
 				int ScreamType = (rand() % 8 + 5);
@@ -1606,7 +1603,7 @@ void update_features() {
 		}
 	}
 	 
-	//  NPC 被射击像布娃娃一样
+	// NPC Ragdoll If Shot
 	if ((NPC_RAGDOLL_VALUES[current_npc_ragdoll] == 1 || NPC_RAGDOLL_VALUES[current_npc_ragdoll] == 2) && GAMEPLAY::GET_MISSION_FLAG() == 0) {
 		const int arrSize5 = 1024;
 		Ped NPCragdoll[arrSize5];
@@ -1633,10 +1630,10 @@ void update_features() {
 		}
 	}
 		
-	// 生命恢复速率
+	// Health Regeneration Rate
 	if (ENTITY::DOES_ENTITY_EXIST(PLAYER::PLAYER_PED_ID()) && REGEN_VALUES[current_regen_speed] != 1.0f) PLAYER::SET_PLAYER_HEALTH_RECHARGE_MULTIPLIER(PLAYER::PLAYER_ID(), REGEN_VALUES[current_regen_speed]);
 
-	// 没有潜水装备的面罩
+	// No Scuba Gear Mask
 	if (featureNoScubaGearMask && ENTITY::IS_ENTITY_IN_WATER(playerPed) == 1) {
 		dive_glasses = true;
 		PED::CLEAR_PED_PROP(playerPed, 1);
@@ -1647,7 +1644,7 @@ void update_features() {
 		dive_glasses = false;
 	}
 
-	// 没有潜水呼吸声
+	// No Scuba Breathing Sound
 	if (featureNoScubaSound) {
 		AUDIO::SET_AUDIO_FLAG("SuppressPlayerScubaBreathing", true);
 	}
@@ -1655,7 +1652,7 @@ void update_features() {
 		AUDIO::SET_AUDIO_FLAG("SuppressPlayerScubaBreathing", false);
 	}
 
-	// 玩家隐形 && 车辆内玩家隐形
+	// Player Invisible && Player Invisible In Vehicle
 	if ((!featurePlayerInvisible && !featurePlayerInvisibleInVehicle && p_invisible == true) || (featurePlayerInvisibleInVehicle && !PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 1) && p_invisible == true)) {
 		ENTITY::SET_ENTITY_VISIBLE(PLAYER::PLAYER_PED_ID(), true);
 		p_invisible = false;
@@ -1665,7 +1662,7 @@ void update_features() {
 		p_invisible = true;
 	}
 	
-	// 玩家醉酒
+	// Player Drunk
 	if(featurePlayerDrunkUpdated) {
 		featurePlayerDrunkUpdated = false;
 		if(featurePlayerDrunk){
@@ -1684,19 +1681,19 @@ void update_features() {
 		AUDIO::SET_PED_IS_DRUNK(playerPed, featurePlayerDrunk);
 	}
 
-	// 夜视
+	// Night Vision
 	if(featureNightVisionUpdated){
 		GRAPHICS::SET_NIGHTVISION(featureNightVision);
 		featureNightVisionUpdated = false;
 	}
 
-	// 热成像
+	// Thermal Vision
 	if(featureThermalVisionUpdated){
 		GRAPHICS::SET_SEETHROUGH(featureThermalVision);
 		featureThermalVisionUpdated = false;
 	}
 
-	// 在死亡时禁用空中刹车
+	// Disable airbrake on death
 	if(ENTITY::IS_ENTITY_DEAD(playerPed)){
 		exit_airbrake_menu_if_showing();
 	}
@@ -1754,7 +1751,7 @@ bool onconfirm_playerData_menu(MenuItem<int> choice){
 		featurePlayerLifeUpdated = true;
 		featurePlayerStatsUpdated = true;
 		apply_pressed = true;
-		set_status_text("玩家数据已应用！");
+		set_status_text("Settings were applied");
 	}
 	return false;
 }
@@ -1802,12 +1799,12 @@ bool onconfirm_powerpunch_menu(MenuItem<int> choice)
 	{
 		if (WEAPONS_POWERPUNCH_VALUES[PowerPunchIndex] != 55) {
 			std::ostringstream ss;
-			ss << "~r~ 警告! 启用手动才能使用！";
+			ss << "~r~Warning! Enable Manual Mode To Use It";
 			set_status_text(ss.str());
 		}
 		keyboard_on_screen_already = true;
-		curr_message = "输入冲击强度："; // 强力拳击力量
-		std::string result_p = show_keyboard("手动输入名称", (char *)lastPowerWeapon.c_str());
+		curr_message = "Enter punch strength:"; // power punch strength
+		std::string result_p = show_keyboard("Enter Name Manually", (char *)lastPowerWeapon.c_str());
 		if (!result_p.empty()) {
 			if (strlen(result_p.c_str()) > 18) result_p = "9223372036854775807"; // result_p.resize(18);
 			lastPowerWeapon = result_p;
@@ -1821,7 +1818,7 @@ bool onconfirm_powerpunch_menu(MenuItem<int> choice)
 }
 
 void process_powerpunch_menu() {
-	const std::string caption = "冲击波选项";
+	const std::string caption = "Power Punch Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -1831,37 +1828,37 @@ void process_powerpunch_menu() {
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enable";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePowerPunch;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "仅限拳脚";
+	toggleItem->caption = "Fists Only";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePunchFists;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "仅限近战武器";
+	toggleItem->caption = "Melee Weapons";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePunchMeleeWeapons;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "仅限枪械武器";
+	toggleItem->caption = "Firearms";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePunchFireWeapons;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(WEAPONS_POWERPUNCH_CAPTIONS, onchange_power_punch_index);
 	listItem->wrap = false;
-	listItem->caption = "超能冲击强度";
+	listItem->caption = "Power Punch Strength";
 	listItem->value = PowerPunchIndex;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "自定义冲击强度";
+	item->caption = "Enter Punch Strength";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
@@ -1870,7 +1867,7 @@ void process_powerpunch_menu() {
 }
 
 bool process_player_life_menu(){
-	const std::string caption = "玩家数据选项";
+	const std::string caption = "Player Data";
 
 	std::vector<MenuItem<int> *> menuItems;
 	MenuItem<int> *item;
@@ -1880,39 +1877,39 @@ bool process_player_life_menu(){
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "加载/重生/切换时应用";
+	toggleItem->caption = "Apply On Load/Respawn/Change";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerLife;
 	toggleItem->toggleValueUpdated = &featurePlayerLifeUpdated;
 	menuItems.push_back(toggleItem);
 	
 	item = new MenuItem<int>();
-	item->caption = "立即应用";
+	item->caption = "Apply Now";
 	item->value = -1;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(PLAYER_HEALTH_CAPTIONS, onchange_player_health_mode);
 	listItem->wrap = false;
-	listItem->caption = "设置玩家血量值";
+	listItem->caption = "Set Player Health";
 	listItem->value = current_player_health;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(PLAYER_ARMOR_CAPTIONS, onchange_player_armor_mode);
 	listItem->wrap = false;
-	listItem->caption = "设置玩家护甲值";
+	listItem->caption = "Set Player Armor";
 	listItem->value = current_player_armor;
 	menuItems.push_back(listItem);
 	
 	listItem = new SelectFromListMenuItem(REGEN_CAPTIONS, onchange_regen_callback);
 	listItem->wrap = false;
-	listItem->caption = "血量自动恢复速度";
+	listItem->caption = "Health Regeneration Rate";
 	listItem->value = current_regen_speed;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(PLAYER_ARMOR_CAPTIONS, onchange_player_stats_mode);
 	listItem->wrap = false;
-	listItem->caption = "角色特殊能力值";
+	listItem->caption = "Character Ability Stats";
 	listItem->value = current_player_stats;
 	menuItems.push_back(listItem);
 
@@ -1920,7 +1917,7 @@ bool process_player_life_menu(){
 }
 
 bool maxwantedlevel_menu() {
-	const std::string caption = "通缉等级设置";
+	const std::string caption = "Wanted Level Settings Options";
 
 	std::vector<MenuItem<int> *> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -1929,49 +1926,49 @@ bool maxwantedlevel_menu() {
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "冻结通缉等级";
+	toggleItem->caption = "Freeze Wanted Level";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWantedLevelFrozen;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_STARSPUNISH_CAPTIONS, onchange_player_wanted_maxpossible_level_mode);
 	listItem->wrap = false;
-	listItem->caption = "最高通缉等级";
+	listItem->caption = "Max Wanted Level";
 	listItem->value = wanted_maxpossible_level;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警察无视您";
+	toggleItem->caption = "Police Ignore You";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerIgnoredByPolice;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "无警用直升机";
+	toggleItem->caption = "No Police Helicopters";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWantedLevelNoPHeli;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "无警用船只";
+	toggleItem->caption = "No Police Boats";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWantedLevelNoPBoats;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "无路障";
+	toggleItem->caption = "No Road Blocks";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWantedNoPRoadB;
 	menuItems.push_back(toggleItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "无特警车辆";
+	toggleItem->caption = "No SWAT Vehicles";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWantedLevelNoSWATVehicles;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警察追捕力度减弱减少";
+	toggleItem->caption = "Less Aggressive Police Pursuit";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWantedLevelNoPRam;
 	menuItems.push_back(toggleItem);
@@ -1980,7 +1977,7 @@ bool maxwantedlevel_menu() {
 }
 
 bool mostwanted_menu() {
-	const std::string caption = "通缉逃犯选项";
+	const std::string caption = "Wanted Fugitive Options";
 
 	std::vector<MenuItem<int> *> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -1989,25 +1986,25 @@ bool mostwanted_menu() {
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enable";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerMostWanted;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_STARSPUNISH_CAPTIONS, onchange_player_mostwanted_level_mode);
 	listItem->wrap = false;
-	listItem->caption = "被通缉时的等级";
+	listItem->caption = "Wanted Status At";
 	listItem->value = mostwanted_level_enable;
 	menuItems.push_back(listItem);
 	
 	listItem = new SelectFromListMenuItem(VEH_STARSPUNISH_CAPTIONS, onchange_player_mostwanted_mode);
 	listItem->wrap = false;
-	listItem->caption = "被发现时通缉等级";
+	listItem->caption = "Wanted Stars If Seen";
 	listItem->value = current_player_mostwanted;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "当在逃犯状态时禁用角色切换";
+	toggleItem->caption = "Disable Player Switching While Fugitive";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerNoSwitch;
 	menuItems.push_back(toggleItem);
@@ -2016,7 +2013,7 @@ bool mostwanted_menu() {
 }
 
 bool player_movement_speed() {
-	const std::string caption = "玩家移动速度";
+	const std::string caption = "Player Movement Speed Options";
 
 	std::vector<MenuItem<int> *> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -2025,37 +2022,37 @@ bool player_movement_speed() {
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "快速游泳";
+	toggleItem->caption = "Fast Swim";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerFastSwim;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "快速奔跑";
+	toggleItem->caption = "Fast Run";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerFastRun;
 	menuItems.push_back(toggleItem);
 	
 	listItem = new SelectFromListMenuItem(PLAYER_MOVEMENT_CAPTIONS, onchange_player_superjump_mode);
 	listItem->wrap = false;
-	listItem->caption = "超级跳跃";
+	listItem->caption = "Super Jump";
 	listItem->value = current_player_superjump;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(PLAYER_MOVEMENT_CAPTIONS, onchange_player_jumpfly_mode);
 	listItem->wrap = false;
-	listItem->caption = "空中飞行";
+	listItem->caption = "Hancock Mode";
 	listItem->value = current_player_jumpfly;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(PLAYER_MOVEMENT_CAPTIONS, onchange_player_movement_mode);
 	listItem->wrap = false;
-	listItem->caption = "奔跑速度";
+	listItem->caption = "Running Speed:";
 	listItem->value = current_player_movement; 
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "醉酒模式";
+	toggleItem->caption = "Drunk";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePlayerDrunk;
 	toggleItem->toggleValueUpdated = &featurePlayerDrunkUpdated;
@@ -2065,7 +2062,7 @@ bool player_movement_speed() {
 }
 
 bool process_ragdoll_menu() {
-	const std::string caption = "布娃娃选项";
+	const std::string caption = "Ragdoll Options";
 
 	std::vector<MenuItem<int> *> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -2075,37 +2072,37 @@ bool process_ragdoll_menu() {
 
 	listItem = new SelectFromListMenuItem(LIMP_IF_INJURED_CAPTIONS, onchange_no_ragdoll_mode);
 	listItem->wrap = false;
-	listItem->caption = "布娃娃效果";
+	listItem->caption = "No Ragdoll";
 	listItem->value = current_no_ragdoll;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "被射击时布娃娃效果";
+	toggleItem->caption = "Ragdoll If Shot";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRagdollIfInjured;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ACCELERATION_CAPTIONS, onchange_shake_ragdoll_mode);
 	listItem->wrap = false;
-	listItem->caption = "被射击时晃动镜头";
+	listItem->caption = "Shake Camera If Shot";
 	listItem->value = feature_shake_ragdoll;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(NPC_RAGDOLL_CAPTIONS, onchange_NPC_ragdoll_mode);
 	listItem->wrap = false;
-	listItem->caption = "NPC被射击时布娃娃效果";
+	listItem->caption = "NPC Ragdoll If Shot";
 	listItem->value = current_npc_ragdoll;
 	menuItems.push_back(listItem);
 	
 	listItem = new SelectFromListMenuItem(LIMP_IF_INJURED_CAPTIONS, onchange_limp_if_injured_mode);
 	listItem->wrap = false;
-	listItem->caption = "受伤时瘸腿走路";
+	listItem->caption = "Limp If Injured";
 	listItem->value = current_limp_if_injured;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ACCELERATION_CAPTIONS, onchange_shake_injured_mode);
 	listItem->wrap = false;
-	listItem->caption = "玩家受伤时晃动镜头";
+	listItem->caption = "Shake Camera If Injured";
 	listItem->value = feature_shake_injured;
 	menuItems.push_back(listItem);
 
@@ -2113,7 +2110,7 @@ bool process_ragdoll_menu() {
 }
 
 bool process_player_prison_menu(){
-	const std::string caption = "玩家越狱选项";
+	const std::string caption = "Prison Break Options";
 
 	std::vector<MenuItem<int> *> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -2123,48 +2120,48 @@ bool process_player_prison_menu(){
 
 	listItem = new SelectFromListMenuItem(PLAYER_PRISON_CAPTIONS, onchange_player_prison_mode);
 	listItem->wrap = false;
-	listItem->caption = "玩家入狱条件";
+	listItem->caption = "Player Imprisoned If";
 	listItem->value = current_player_prison;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(MISC_PHONE_BILL_CAPTIONS, onchange_player_escapemoney_mode);
 	listItem->wrap = false;
-	listItem->caption = "越狱失败惩罚款";
+	listItem->caption = "Escape Failure Payment";
 	listItem->value = current_player_escapemoney;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_STARSPUNISH_CAPTIONS, onchange_player_escapestars_mode);
 	listItem->wrap = false;
-	listItem->caption = "越狱后获得的通缉星数";
+	listItem->caption = "Number Of Stars After Escaping";
 	listItem->value = current_escape_stars;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(PLAYER_DISCHARGE_CAPTIONS, onchange_player_discharge_mode);
 	listItem->wrap = false;
-	listItem->caption = "坐牢的时间";
+	listItem->caption = "Time To Discharge";
 	listItem->value = current_player_discharge;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "极限困难模式";
+	toggleItem->caption = "Hardcore Mode";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePrison_Hardcore;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警察对囚犯衣服的反应";
+	toggleItem->caption = "Cops React To Prison Clothes";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePrison_Robe;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "行人对囚犯衣服的反应";
+	toggleItem->caption = "Peds React To Prison Clothes";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePedPrison_Robe;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "监狱里更多的囚犯";
+	toggleItem->caption = "More Prisoners At Yard";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePrison_Yard;
 	menuItems.push_back(toggleItem);
@@ -2173,7 +2170,7 @@ bool process_player_prison_menu(){
 }
 
 bool process_player_forceshield_menu() {
-	const std::string caption = "超能力选项";
+	const std::string caption = "Jedi Powers Options";
 
 	std::vector<MenuItem<int> *> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -2182,20 +2179,20 @@ bool process_player_forceshield_menu() {
 	int i = 0;
 
 	item = new MenuItem<int>();
-	item->caption = "冲击波";
+	item->caption = "Power Punch";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(VEH_MASS_CAPTIONS, onchange_player_forceshield_mode);
 	listItem->wrap = false;
-	listItem->caption = "玩家能量护盾";
+	listItem->caption = "Player Force Shield";
 	listItem->value = current_player_forceshieldN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ANGLE_CAPTIONS, onchange_levitation_index);
 	listItem->wrap = false;
-	listItem->caption = "磁悬浮";
+	listItem->caption = "Levitation";
 	listItem->value = LevitationIndex;
 	menuItems.push_back(listItem);
 
@@ -2253,166 +2250,82 @@ bool onconfirm_player_menu(MenuItem<int> choice){
 void process_player_menu(){
 	const int lineCount = 29;
 
-	const std::string caption = "玩家选项";
+	const std::string caption = "Player Options";
 
 	StandardOrToggleMenuDef lines[lineCount] = {
-		{"更改玩家外观", NULL, NULL, false},
-		{"治疗玩家", NULL, NULL, true},
-		{"玩家无敌", &featurePlayerInvincible, &featurePlayerInvincibleUpdated, true},
-		{"无坠落伤害", &featureNoFallDamage, NULL, true},
-		{"无燃烧伤害", &featureFireProof, NULL, true},
-		{"增加或减少现金", NULL, NULL, true, CASH},
-		{"当前通缉等级", NULL, NULL, true, WANTED},
-		{"通缉等级设置", NULL, NULL, false},
-		{"通缉逃犯", NULL, NULL, false},
-		{"无限能力", &featurePlayerUnlimitedAbility, NULL, true},
-		{"无噪音", &featurePlayerNoNoise, NULL, true}, 
-		{"可以在公寓奔跑", &featurePlayerRunApartments, NULL, true},
-		{"玩家移动速度", NULL, NULL, false},
-		{"布娃娃", NULL, NULL, false},
-		{"隐身", &featurePlayerInvisible, NULL, true}, 
-		{"在车辆内隐身", &featurePlayerInvisibleInVehicle, NULL, true }, 
-		{"开启夜视", &featureNightVision, &featureNightVisionUpdated, true},
-		{"开启热成像", &featureThermalVision, &featureThermalVisionUpdated, true},
-		{"场景动画", NULL, NULL, false},
-		{"玩家数据", NULL, NULL, false},
-		{"监狱逃脱", NULL, NULL, false},
-		{"超能力", NULL, NULL, false},
-		{"禁止吹口哨叫出租车", &NoTaxiWhistling, NULL, false},
-		{"玩家可以被爆头", &featurePlayerCanBeHeadshot, NULL, false},
-		{"手动重生", &featureNoAutoRespawn, NULL },
-		{"死亡/被捕后, 立即重生", &featureRespawnsWhereDied, NULL, false},
-		{"第一人称, 死亡/被捕视角", &featureFirstPersonDeathCamera, NULL },
-		{"无潜水氧气面罩", &featureNoScubaGearMask, NULL, true },
-		{"无潜水吸氧呼吸声", &featureNoScubaSound, NULL, true },
+		{"Player Appearance", NULL, NULL, false},
+		{"Heal Player", NULL, NULL, true},
+		{"Invincible", &featurePlayerInvincible, &featurePlayerInvincibleUpdated, true},
+		{"No Fall Damage", &featureNoFallDamage, NULL, true},
+		{"Fire Proof", &featureFireProof, NULL, true},
+		{"Add or Remove Cash", NULL, NULL, true, CASH},
+		{"Wanted Level", NULL, NULL, true, WANTED},
+		{"Wanted Level Settings", NULL, NULL, false},
+		{"Wanted Fugitive", NULL, NULL, false},
+		{"Unlimited Ability", &featurePlayerUnlimitedAbility, NULL, true},
+		{"Noiseless", &featurePlayerNoNoise, NULL, true}, 
+		{"Can Run In Apartments", &featurePlayerRunApartments, NULL, true},
+		{"Player Movement Speed", NULL, NULL, false},
+		{"Ragdoll", NULL, NULL, false},
+		{"Invisibility", &featurePlayerInvisible, NULL, true}, 
+		{"Invisibility In Vehicle", &featurePlayerInvisibleInVehicle, NULL, true }, 
+		{"Night Vision", &featureNightVision, &featureNightVisionUpdated, true},
+		{"Thermal Vision", &featureThermalVision, &featureThermalVisionUpdated, true},
+		{"Animations", NULL, NULL, false},
+		{"Player Data", NULL, NULL, false},
+		{"Prison Break", NULL, NULL, false},
+		{"Jedi Powers", NULL, NULL, false},
+		{"No Whistling For Taxi", &NoTaxiWhistling, NULL, false},
+		{"Player Can Be Headshot", &featurePlayerCanBeHeadshot, NULL, false},
+		{"Manual Respawn", &featureNoAutoRespawn, NULL },
+		{"Instant Respawn On Death/Arrest", &featureRespawnsWhereDied, NULL, false},
+		{"First Person Death/Arrest Camera", &featureFirstPersonDeathCamera, NULL },
+		{"No Scuba Gear Mask", &featureNoScubaGearMask, NULL, true },
+		{"No Scuba Breathing Sound", &featureNoScubaSound, NULL, true },
 	};
 
 	draw_menu_from_struct_def(lines, lineCount, &activeLineIndexPlayer, caption, onconfirm_player_menu);
 }
 
-// 子菜单选项索引变量
-int activeLineIndexLocalization = 0;
+// Reset all settings
+bool onconfirm_reset_menu(MenuItem<int> choice){
+	switch (activeLineIndexReset){
+	case 0:
+		menu_beep();
+		set_menu_showing(true);
+		WAIT(200);
+		process_main_menu();
+		activeLineIndexReset = 0;
+		set_menu_showing(false);
+		break;
+	case 1:
+		reset_globals();
+		process_main_menu();
+		activeLineIndexReset = 0;
+		set_menu_showing(false);
+		break;
+	default:
+		break;
+	}
 
-// 汉化说明菜单回调函数
-bool onconfirm_localization_menu(MenuItem<int> choice) {
-	// 汉化说明菜单项不可交互，直接返回 false，表示不执行任何操作
 	return false;
 }
 
-// 汉化说明子菜单
-void process_localization_menu() {
-	// 菜单项数量（不包含标题选项）
-	const int lineCount = 10;
-	const std::string caption = "关于此修改器"; // 菜单标题
-
-	// 构造版本号显示字符串
-	std::string versionDisplay = "修改器版本：" + VERSION_STRING;
-
-	// 定义菜单项
-	StandardOrToggleMenuDef lines[lineCount] = {
-		{ versionDisplay.c_str(), NULL, NULL, true},    // 动态显示版本号
-		{ "原作者：Flying-Scotsmar,  Slash_Alex", NULL, NULL, true},
-		{ "基于 Alexander Blade 的 ScripthookV 构建", NULL, NULL, true},
-		{ "感谢所有原开发者们，感谢帮助我的朋友们", NULL, NULL, true},
-		{ "汉化：随梦&而飞", NULL, NULL, true},
-		{ "感谢：烈火神君,  羽一大魔王", NULL, NULL, true},
-		{ "此版本和原英文版有较大区别", NULL, NULL, true},
-		{ "某些配置文件并不互相通用", NULL, NULL, true},
-		{ "使用此汉化版，必须删除以前的 DB 文件", NULL, NULL, true},
-		{ "标题添加 CN 就是为了区分其他版本", NULL, NULL, true},
-	};
-
-	// 绘制菜单
-	draw_menu_from_struct_def(lines, lineCount, &activeLineIndexLocalization, caption, onconfirm_localization_menu);
-}
-
-bool onconfirm_reset_all_menu(MenuItem<int> choice) {
-    switch (activeLineIndexReset) {
-    case 0: // 取消重置操作（第 0 项）
-        menu_beep(); // 按钮提示音
-        set_status_text_centre_screen("您已 ~r~取消 ~s~重置！"); // 屏幕中间提示，带闪烁
-        return true; // 返回 true 退出当前菜单，自动返回上一级菜单
-    case 1: // 确认重置操作（第 1 项）
-        reset_globals(); // 重置所有设置
-        set_status_text_centre_screen("您已 ~g~确认 ~s~重置！"); // 屏幕中间提示，带闪烁
-        return true; // 返回 true 退出当前菜单，自动返回上一级菜单
-    default:
-        break;
-    }
-    return false;
-}
-
-bool onconfirm_reset_menu(MenuItem<int> choice) {
-    switch (activeLineIndexReset) {
-    case 0: // 重置所有选项（第 0 项）
-        menu_beep(); // 按钮提示音
-        activeLineIndexReset = 0; // 重置子菜单索引
-        process_reset_all_menu(); // 显示重置所有选项菜单
-        break;
-    case 1: // 进入汉化说明（第 1 项）
-        menu_beep(); // 按钮提示音
-        activeLineIndexLocalization = 0; // 重置子菜单索引
-        process_localization_menu(); // 显示汉化说明菜单
-        break;
-    case 2: // 重新载入配置文件（第 2 项）
-        menu_beep(); // 按钮提示音
-        read_config_file(); // 重新读取 ent-config.xml
-        read_config_ini_file(); // 重新读取 ent_customization.ini
-        load_hotkey_settings_from_xml(); // 重新加载快捷键设置到内存变量
-        set_status_text("文件: ent-config.xml\n文件: ent_customization.ini\n全部重新载入完成！"); // 右下角提示
-        set_status_text_centre_screen("配置文件 ~g~重新载入 ~s~完成！"); // 屏幕中间提示，带闪烁
-        return true; // 返回 true 退出当前菜单，自动返回上一级菜单
-    default:
-        break;
-    }
-    return false;
-}
-
-// 重置所有选项菜单
-void process_reset_all_menu() {
-	// 菜单项数量（不包含标题选项）
+void process_reset_menu(){
 	const int lineCount = 2;
-	const std::string caption = "重置所有选项"; // 菜单标题
-
-	// 定义菜单项
+	
+	const std::string caption = "Reset All Settings";
+	
 	StandardOrToggleMenuDef lines[lineCount] = {
-		{ "取消",         NULL, NULL, true},  // 取消操作
-		{ "确认",         NULL, NULL, true},  // 确认重置
+		{ "NO", NULL, NULL, true},
+		{ "YES", NULL, NULL, true},
 	};
-
-	// 绘制菜单
-	draw_menu_from_struct_def(lines, lineCount, &activeLineIndexReset, caption, onconfirm_reset_all_menu);
-}
-
-// 重置选项菜单
-void process_reset_menu() {
-	std::vector<MenuItem<int> *> menuItems;
-	int index = 0;
-	MenuItem<int> *item;
-
-	item = new MenuItem<int>();
-	item->caption = "重置所有选项";
-	item->value = index++;
-	item->isLeaf = false;
-	menuItems.insert(menuItems.end(), item);
-
-	item = new MenuItem<int>();
-	item->caption = "关于此修改器";
-	item->value = index++;
-	item->isLeaf = false;
-	menuItems.insert(menuItems.end(), item);
-
-	item = new MenuItem<int>();
-	item->caption = "重新载入配置文件";
-	item->value = index++;
-	item->isLeaf = true;
-	menuItems.insert(menuItems.end(), item);
-
-	draw_generic_menu<int>(menuItems, &activeLineIndexReset, "重置选项", onconfirm_reset_menu, nullptr, nullptr, nullptr);
+	
+	draw_menu_from_struct_def(lines, lineCount, &activeLineIndexReset, caption, onconfirm_reset_menu);
 }
 
 //==================
-//   主菜单
+// MAIN MENU
 //==================
 
 int activeLineIndexMain = 0;
@@ -2455,7 +2368,7 @@ bool onconfirm_main_menu(MenuItem<int> choice){
 
 void process_main_menu(){
 	std::ostringstream captionSS;
-	captionSS << "~HUD_COLOUR_MENU_YELLOW~增强型 ~HUD_COLOUR_WHITE~修改器 ~HUD_COLOUR_GREY~版本 ";
+	captionSS << "~HUD_COLOUR_MENU_YELLOW~Enhanced ~HUD_COLOUR_WHITE~Native Trainer ~HUD_COLOUR_GREY~Update ";
 	captionSS << VERSION_STRING;
 
 	std::vector<MenuItem<int>*> menuItems;
@@ -2464,63 +2377,63 @@ void process_main_menu(){
 	MenuItem<int> *item;
 
 	item = new MenuItem<int>();
-	item->caption = "玩家";
+	item->caption = "Player";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "传送";
+	item->caption = "Locations";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "武器";
+	item->caption = "Weapons";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "保镖";
+	item->caption = "Bodyguards";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "车辆";
+	item->caption = "Vehicles";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "世界";
+	item->caption = "World";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "时间";
+	item->caption = "Time";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "物体";
+	item->caption = "Objects";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "其他选项";
+	item->caption = "Miscellaneous";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "重置选项";
+	item->caption = "Reset All Settings";
 	item->value = i++;
-	item->isLeaf = false;
+	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	MenuParameters<int> params(menuItems, captionSS.str());
@@ -2559,9 +2472,6 @@ void reset_globals(){
 	reset_prop_globals();
 
 	reset_areaeffect_globals();
-	
-	// 重置快捷键设置并写入XML文件
-	//reset_hotkey_settings_to_defaults();
 
 	activeLineIndexMain =
 	activeLineIndexPlayer =
@@ -2631,7 +2541,7 @@ void reset_globals(){
 		featurePlayerNoSwitch =
 		featureWantedLevelFrozenUpdated = true;
 
-	set_status_text("所有设置已重置为默认！");
+	set_status_text("All settings reset to defaults");
 
 	DWORD myThreadID;
 	HANDLE myHandle = CreateThread(0, 0, save_settings_thread, 0, 0, &myThreadID);
@@ -2645,30 +2555,31 @@ void main(){
 
 	setAirbrakeRelatedInputToBlocked(false, true);
 
-	write_text_to_log_file("获取设置中...");
+	write_text_to_log_file("Setting up calls");
 
 	set_periodic_feature_call(update_features);
 
-	write_text_to_log_file("设置加载中...");
+	write_text_to_log_file("Loading settings");
 
 	load_settings();
 
 	init_vehicle_feature();
 
-	// 遍历车辆池并创建车辆数组
+	//Go through the vehicle pool and make the vehicle arrays
 	PopulateVehicleModelsArray();
 
-	write_text_to_log_file("设置加载完成！");
+	write_text_to_log_file("Loaded settings OK");
 
-	//这将基于当前应用程序的默认区域设置创建一个新的区域设置
-	//(该默认值是在启动时提供的，但可以通过 std::locale::global 覆盖)
-	//然后扩展它，添加一个额外的 facet 来控制数值输出。
+	// this creates a new locale based on the current application default
+	// (which is either the one given on startup, but can be overriden with
+	// std::locale::global) - then extends it with an extra facet that 
+	// controls numeric output.
 	std::locale comma_locale(std::locale(), new comma_numpunct());
 
-	// 告诉 cout 使用我们的新区域设置。
+	// tell cout to use our new locale.
 	std::cout.imbue(comma_locale);
 
-	if (featureShowStatusMessage) set_status_text("~HUD_COLOUR_MENU_YELLOW~ENT~HUD_COLOUR_WHITE~ 当前版本 ~HUD_COLOUR_MENU_YELLOW~" + VERSION_STRING + "~HUD_COLOUR_WHITE~");
+	if (featureShowStatusMessage) set_status_text("~HUD_COLOUR_MENU_YELLOW~ENT~HUD_COLOUR_WHITE~ ver. ~HUD_COLOUR_MENU_YELLOW~" + VERSION_STRING + "~HUD_COLOUR_WHITE~");
 	
 	while(true){
 		if(trainer_switch_pressed()){
@@ -2689,13 +2600,13 @@ void main(){
 }
 
 void make_minidump(EXCEPTION_POINTERS* e){
-	write_text_to_log_file("请求转储");
+	write_text_to_log_file("Dump requested");
 
-	auto hDbgHelp = LoadLibraryA("调试帮助库");
+	auto hDbgHelp = LoadLibraryA("dbghelp");
 	if(hDbgHelp == nullptr){
 		return;
 	}
-	auto pMiniDumpWriteDump = (decltype(&MiniDumpWriteDump)) GetProcAddress(hDbgHelp, "写入迷你转储");
+	auto pMiniDumpWriteDump = (decltype(&MiniDumpWriteDump)) GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
 	if(pMiniDumpWriteDump == nullptr){
 		return;
 	}
@@ -2721,21 +2632,21 @@ void make_minidump(EXCEPTION_POINTERS* e){
 
 	CloseHandle(hFile);
 
-	write_text_to_log_file("转储已完成");
+	write_text_to_log_file("Dump complete");
 
 	return;
 }
 
 LONG CALLBACK unhandled_handler(EXCEPTION_POINTERS* e){
-	write_text_to_log_file("发生异常！");
+	write_text_to_log_file("Exception occured");
 	make_minidump(e);
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
 int filterException(int code, PEXCEPTION_POINTERS ex){
-	set_status_text("糟糕，ENT 程序崩溃了！");
+	set_status_text("Whoops, ENT crashed!");
 
-	write_text_to_log_file("脚本主程序 异常");
+	write_text_to_log_file("ScriptMain exception");
 	make_minidump(ex);
 	return EXCEPTION_EXECUTE_HANDLER;
 }
@@ -2747,76 +2658,75 @@ void ScriptMain(){
 	__try{
 		#endif
 		
-		set_status_text("~HUD_COLOUR_WHITE~欢迎使用 ~HUD_COLOUR_MENU_YELLOW~ENT ~HUD_COLOUR_WHITE~修改器！");
-		set_status_text("~HUD_COLOUR_MENU_YELLOW~ENT ~HUD_COLOUR_WHITE~修改器，加载完成！");
+		set_status_text("~HUD_COLOUR_MENU_YELLOW~ENT~HUD_COLOUR_WHITE~ is initializing...");
 
-		// 如果文件夹不存在 - 这将尝试创建该文件夹。这不会失败，因此不会有其他问题。
+		//If the folder does not exist - this will attempt to make it. This should not fail hence no else.
 		std::string folder_path = GetCurrentModulePath() + "Enhanced Native Trainer";
 		if (CreateDirectory(folder_path.c_str(), NULL) || ERROR_ALREADY_EXISTS == GetLastError())
-			write_text_to_log_file("ENT 文件夹已存在, 请继续！");
+			write_text_to_log_file("ENT folder exists. Continuing!");
 	
 		clear_log_file();
 
-		write_text_to_log_file("尝试初始化存储");
+		write_text_to_log_file("Trying to init storage");
 		init_storage();
-		write_text_to_log_file("存储初始化完成");
+		write_text_to_log_file("Init storage complete");
 
 		database = new ENTDatabase();
 		if(!database->open()){
-			write_text_to_log_file("无法打开数据库");
-			set_status_text("ENT 无法打开数据库！\nENT 正在退出！");
+			write_text_to_log_file("Failed to open database");
+			set_status_text("ENT couldn't open the database - exiting");
 			database = NULL;
 			return;
 		}
 
 		build_anim_tree();
 
-		write_text_to_log_file("脚本主程序调用 - 处理程序设置");
+		write_text_to_log_file("ScriptMain called - handler set");
 
-		write_text_to_log_file("正在读取 XML 配置...");
+		write_text_to_log_file("Reading XML config...");
 		read_config_file();
-		write_text_to_log_file("XML 配置读取完成");
+		write_text_to_log_file("XML config read complete");
 
-		write_text_to_log_file("正在读取 INI 配置...");
+		write_text_to_log_file("Reading INI config....");
 		read_config_ini_file();
-		write_text_to_log_file("INI 配置读取完成");
-
-		// 加载快捷键设置到内存变量
-		write_text_to_log_file("正在加载快捷键设置...");
-		load_hotkey_settings_from_xml();
-		write_text_to_log_file("快捷键设置加载完成");
+		write_text_to_log_file("INI config read complete");
 
 		//UnlockAllObjects();
 
-		//查找无线电跳跃和文件寄存器模式
+		//Find the radio skip & file register patterns
 		SInit();
 
+		GameVariant variant = GetGameVariant();
 		const std::string name = "ENT_vehicle_previews.ytd"; 
-		std::string fullPath = GetCurrentModulePath() + "Enhanced Native Trainer\\Vehicle\\" + name;
+		std::string fullPath;
+		if (variant == GameVariant::GTA5Legacy)
+			fullPath = GetCurrentModulePath() + "Enhanced Native Trainer\\Legacy\\" + name;
+		else
+			fullPath = GetCurrentModulePath() + "Enhanced Native Trainer\\Enhanced\\" + name;
 		int textureID = 0;
 
 		if (does_file_exist(fullPath.c_str()))
 		{
 			if (textureID = RegisterFile(fullPath, name))
-				write_text_to_log_file("注册的纹理文件： " + fullPath + " 纹理标识符 ID " + std::to_string(textureID));
+				write_text_to_log_file("Registered texture file: " + fullPath + " with texture ID " + std::to_string(textureID));
 			else
-				write_text_to_log_file("无法注册纹理文件: " + fullPath);
+				write_text_to_log_file("Failed to Register texture file: " + fullPath);
 		}
 		else
-			write_text_to_log_file("无法注册纹理文件: " + fullPath + " 注册文件不存在!");
+			write_text_to_log_file("Failed to Register texture file: " + fullPath + " as it does not exist!");
 		
-		write_text_to_log_file("查找 shop_controller 脚本");
+		write_text_to_log_file("Finding shop_controller script");
 
 		if (findShopController())
 		{
-			write_text_to_log_file("已找到 shop_controller 脚本：正在尝试启用多人游戏车辆");
+			write_text_to_log_file("shop_controller script found; attempting to enable MP cars");
 			enableCarsGlobal();
-			write_text_to_log_file("多人游戏车辆已启用");
+			write_text_to_log_file("MP cars enabled");
 		}
 
 		main();
 
-		write_text_to_log_file("脚本主程序-已结束");
+		write_text_to_log_file("ScriptMain ended");
 
 		#ifdef _DEBUG
 	}
@@ -2831,31 +2741,31 @@ void ScriptTidyUp(){
 	__try{
 		#endif
 
-		write_text_to_log_file("脚本整理-已调用");
+		write_text_to_log_file("ScriptTidyUp called");
 
 		save_settings();
-		write_text_to_log_file("已保存设置");
+		write_text_to_log_file("Saved settings");
 
 		setGameInputToEnabled(true, true);
 		setAirbrakeRelatedInputToBlocked(false, true);
-		write_text_to_log_file("已重置输入");
+		write_text_to_log_file("Reset input");
 
 		cleanup_script();
-		write_text_to_log_file("已清理脚本");
+		write_text_to_log_file("Cleaned up script");
 		WAIT(0);
 		cleanup_props();
-		write_text_to_log_file("已清理道具");
+		write_text_to_log_file("Cleaned up props");
 		WAIT(0);
 		cleanup_anims();
-		write_text_to_log_file("已清理动画");
+		write_text_to_log_file("Cleaned up anims");
 
 		if(database != NULL){
 			database->close();
 			delete database;
-			write_text_to_log_file("数据库已终止");
+			write_text_to_log_file("Database killed");
 		}
 
-		write_text_to_log_file("脚本整理-完成");
+		write_text_to_log_file("ScriptTidyUp done");
 		#ifdef _DEBUG
 	}
 	__except(filterException(GetExceptionCode(), GetExceptionInformation())){
@@ -3096,7 +3006,7 @@ void save_settings(){
 		return;
 	}
 
-	write_text_to_log_file("正在保存设置, 开始");
+	write_text_to_log_file("Saving settings, start");
 
 	/*
 	if (!db_mutex.try_lock())
@@ -3107,38 +3017,38 @@ void save_settings(){
 	*/
 
 	if(database != NULL){
-		write_text_to_log_file("实时保存");
+		write_text_to_log_file("Actually saving");
 		database->store_setting_pairs(get_generic_settings());
 		database->store_feature_enabled_pairs(get_feature_enablements());
-		write_text_to_log_file("保存标志已释放");
+		write_text_to_log_file("Save flag released");
 	}
 }
 
 void load_settings(){
 	handle_generic_settings(database->load_setting_pairs());
 
-	write_text_to_log_file("获得了通用对");
+	write_text_to_log_file("Got generic pairs");
 
 	database->load_feature_enabled_pairs(get_feature_enablements());
 
-	write_text_to_log_file("获得了特征对");
+	write_text_to_log_file("Got feature pairs");
 
 	//db_mutex.unlock();
 }
 
 void init_storage(){
 	WCHAR* folder = get_storage_dir_path();
-	write_text_to_log_file("正在尝试创建存储文件夹");
+	write_text_to_log_file("Trying to create storage folder");
 
 	std::wstring ws1(folder);
 	std::string folderSS1(ws1.begin(), ws1.end());
 
 	write_text_to_log_file(folderSS1);
 	if(CreateDirectoryW(folder, NULL) || ERROR_ALREADY_EXISTS == GetLastError()){
-		write_text_to_log_file("存储目录已创建或已存在");
+		write_text_to_log_file("Storage dir created or exists");
 	}
 	else{
-		write_text_to_log_file("无法创建存储目录");
+		write_text_to_log_file("Couldn't create storage dir");
 	}
 	delete folder;
 
@@ -3146,13 +3056,13 @@ void init_storage(){
 	std::wstring ws2(folder2);
 	std::string folderSS2(ws2.begin(), ws2.end());
 
-	write_text_to_log_file("正在尝试创建临时文件夹");
+	write_text_to_log_file("Trying to create temp folder");
 	write_text_to_log_file(folderSS2);
 	if(CreateDirectoryW(folder2, NULL) || ERROR_ALREADY_EXISTS == GetLastError()){
-		write_text_to_log_file("临时目录已创建或已存在");
+		write_text_to_log_file("Temp dir created or exists");
 	}
 	else{
-		write_text_to_log_file("无法创建临时目录");
+		write_text_to_log_file("Couldn't create temp dir");
 	}
 	delete folder2;
 }
@@ -3244,22 +3154,22 @@ void heal_player(){
 		}
 	}
 
-	set_status_text("生命值已恢复！");
+	set_status_text("Player healed");
 }
 
 void toggle_invisibility(){
 	featurePlayerInvisible = !featurePlayerInvisible;
 	if(featurePlayerInvisible){
-		set_status_text("玩家隐身了！");
+		set_status_text("Player invisible");
 	}
 	else{
-		set_status_text("玩家不再隐身了！");
+		set_status_text("Player no longer invisible");
 	}
 }
 
 void reset_wanted_level(){
 	PLAYER::CLEAR_PLAYER_WANTED_LEVEL(PLAYER::PLAYER_ID());
-	set_status_text("通缉等级已清除！");
+	set_status_text("Wanted level cleared");
 }
 
 int get_frame_number(){

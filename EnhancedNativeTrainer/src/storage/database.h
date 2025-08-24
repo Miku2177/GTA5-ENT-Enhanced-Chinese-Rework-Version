@@ -1,7 +1,7 @@
 /*
-增强版原生训练器项目的一部分。
+Part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include <stdio.h>
@@ -62,7 +62,7 @@ class SavedPropSet
 public:
 	std::vector<SavedPropDBRow*> items;
 	int rowID;
-	int dbSize; //数据库返回的大小
+	int dbSize; //size as returned by database
 	std::string saveName;
 
 	inline SavedPropSet()
@@ -265,7 +265,7 @@ public:
 	int texture;
 };
 
-// 保存/加载 保镖
+// save/load bodyguard
 class SavedBodSkinComponentDBRow
 {
 public:
@@ -324,9 +324,9 @@ public:
 
 	}
 };
-// 保存/加载 保镖结束
+// end of save/load bodyguard
 
-// 已保存的武器
+// saved weapon
 class SavedWeaponDBRow
 {
 public:
@@ -353,9 +353,9 @@ public:
 
 	}
 };
-// 已保存的武器结束
+// end of saved weapon
 
-// 保存/加载车辆颜色
+// save/load veh colours
 class SavedVehColourDBRow
 {
 public:
@@ -391,7 +391,7 @@ public:
 
 	}*/
 };
-// 保存/加载车辆颜色结束
+// end of save/load veh colours
 
 class SavedSkinDBRow
 {

@@ -1,11 +1,11 @@
 /*
-这段代码的部分最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-它现在已成为 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include "utils.h"
@@ -18,8 +18,9 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 
 #include "debug\debuglog.h"
 #include "features/misc.h"
+#include "features/function_resolver.h"
 
-extern "C" IMAGE_DOS_HEADER __ImageBase; // MSVC 专用，其他编译器请使用 DllMain 中的 HMODULE
+extern "C" IMAGE_DOS_HEADER __ImageBase; // MSVC specific, with other compilers use HMODULE from DllMain
 
 std::string cachedModulePath;
 
@@ -27,7 +28,7 @@ std::string GetCurrentModulePath()
 {
 	if (cachedModulePath.empty())
 	{
-		// 获取模块路径
+		// get module path
 		char modPath[MAX_PATH];
 		memset(modPath, 0, sizeof(modPath));
 		GetModuleFileNameA((HMODULE)&__ImageBase, modPath, sizeof(modPath));
@@ -87,13 +88,13 @@ std::wstring ConvertFromUtf8ToUtf16(const std::string& str)
 	return convertedString;
 }
 
-// 将弧度转换为角度
+//Converts Radians to Degrees
 float degToRad(float degs)
 {
 	return degs*(float)3.141592653589793 / (float)180.0;
 }
 
-// 将角度转换为弧度
+//Converts Degrees to Radians
 float radToDeg(float rads)
 {
 	return rads * ((float)180.0 / (float)3.141592653589793);
@@ -132,27 +133,23 @@ uintptr_t FindPattern(const char *pattern, const char *mask)
 	return FindPattern(pattern, mask, reinterpret_cast<const char *>(module.lpBaseOfDll), module.SizeOfImage);
 }
 
-bool CompareMemory(const uint8_t* pData, const uint8_t* bMask, const char* sMask)
-{
-	for (; *sMask; ++sMask, ++pData, ++bMask)
-		if (*sMask == 'x' && *pData != *bMask)
-			return false;
-
-	return *sMask == NULL;
-}
-
 int RegisterFile(const std::string& fullPath, const std::string& fileName)
 {
 	int textureID = -1;
 	std::string path = fullPath.c_str();
-	static uint32_t* (*pRegisterFile)(int*, const char*, bool, const char*, bool) = reinterpret_cast<decltype(pRegisterFile)>(FindPatternJACCO("\x48\x89\x5C\x24\x00\x48\x89\x6C\x24\x00\x48\x89\x7C\x24\x00\x41\x54\x41\x56\x41\x57\x48\x83\xEC\x50\x48\x8B\xEA\x4C\x8B\xFA\x48\x8B\xD9\x4D\x85\xC9", "xxxx?xxxx?xxxx?xxxxxxxxxxxxxxxxxxxxxx"));
+	auto pRegisterFile = ResolveFunction<FunctionID::RegisterFile>();
+
+	if (!pRegisterFile) {
+		write_text_to_log_file("[ERROR] RegisterFile handle not found!");
+		return -1;
+	}
 
 	if (pRegisterFile(&textureID, fullPath.c_str(), true, fileName.c_str(), false))
 	{
 		return textureID;
 	}
 
-	write_text_to_log_file("注册失败 " + path);
+	write_text_to_log_file("Failed to register " + path);
 	return 0;
 }
 

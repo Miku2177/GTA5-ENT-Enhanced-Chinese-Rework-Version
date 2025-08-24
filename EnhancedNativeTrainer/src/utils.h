@@ -1,11 +1,11 @@
 /*
-这段代码的部分最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-它现在已成为 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #pragma once
@@ -14,7 +14,7 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 #include <stdio.h>
 #include <windows.h>
 
-// 返回模块加载路径，并带有尾部斜杠
+// returns module load path with trailing slash
 std::string GetCurrentModulePath();
 
 HMODULE GetENTModuleHandle();
@@ -34,8 +34,6 @@ float radToDeg(float rads);
 uintptr_t FindPattern(const char *pattern, const char *mask, const char* startAddress, size_t size);
 
 uintptr_t FindPattern(const char *pattern, const char *mask);
-
-bool CompareMemory(const uint8_t* pData, const uint8_t* bMask, const char* sMask);
 
 int RegisterFile(const std::string& fullPath, const std::string& fileName);
 

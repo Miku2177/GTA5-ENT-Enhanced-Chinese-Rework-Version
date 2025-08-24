@@ -1,7 +1,7 @@
 /*
-	本文件是 GTA V Script Hook SDK 的一部分
-				http://dev-c.com
-	(C) Alexander Blade 2015-2016
+	THIS FILE IS A PART OF GTA V SCRIPT HOOK SDK
+				http://dev-c.com			
+			(C) Alexander Blade 2015
 */
 
 #pragma once
@@ -16,7 +16,7 @@ static inline void nativePush(T val)
 	UINT64 val64 = 0;
 	if (sizeof(T) > sizeof(UINT64))
 	{
-		throw "错误，值大小 > 64 位";
+		throw "error, value size > 64 bit";
 	}
 	*reinterpret_cast<T *>(&val64) = val; // &val + sizeof(dw) - sizeof(val)
 	nativePush64(val64);

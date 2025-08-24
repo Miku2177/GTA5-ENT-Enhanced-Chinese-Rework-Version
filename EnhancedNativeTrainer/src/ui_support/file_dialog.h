@@ -1,11 +1,11 @@
 /*
-这段代码的部分最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-它现在已成为 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #pragma once
@@ -37,7 +37,7 @@ public:
 	std::string filePath;
 };
 
-// 公共调用
+//the public calls
 void show_save_dialog_in_thread(std::string title, SaveFileDialogCallback* request);
 void show_load_dialog_in_thread(std::string title, LoadFileDialogCallback* request);
 

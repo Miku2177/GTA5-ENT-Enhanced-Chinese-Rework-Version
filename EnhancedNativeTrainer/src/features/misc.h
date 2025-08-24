@@ -1,11 +1,11 @@
 /*
-这段代码的部分最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-它现在已成为 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #pragma once
@@ -19,7 +19,7 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 #include "..\ui_support\menu_functions.h"
 #include "..\debug\debuglog.h"
 #include "..\storage\database.h"
-/* 来源于 Zorg93 的 "EnableMPCars" 代码 */
+/* From Zorg93's "EnableMPCars" code */
 #include <cstddef>
 
 const std::vector<std::string> MISC_MUSICEVENT_VALUES{ "AH3A_FIB_DOCS_RT", "AH3A_RUBBLE_RT", "AH3B_BURNTOUT_TWO_RT", "AH3B_DOWNLOADING_RT", "AH3B_GET_TO_VAN_RT", "ARM3_RESTART_4", /*"BG_SIGHTSEER_START_ATTACK",*/ "EPS6_START", "EXTREME1_BIKE", "FAM3_CHASE_RESTART", 
@@ -48,18 +48,18 @@ const std::vector<std::string> MISC_CUTSCENE_VALUES{ "abigail_mcs_1_concat", "ab
 "sol_1_mcs_2", "sol_1_mcs_3",  "sol_2_ext_concat", "sol_2_int_alt1", "sol_3_int", "sol_5_mcs_1", "sol_5_mcs_2", "sol_5_mcs_2_p5", "tmom_1_rcm", "tmom_2_rcm", "tonya_mcs_1", "tonya_mcs_2", "tonya_mcs_3", "trevor_1_int", "trevor_2_int", "trevor_drive_int", 
 "trv2_mcs_8", "trvram_1", "trvram_2_concat", "trvram_3", "trvram_4", "trvram_5_con", "trv_1_mcs_1_p1", "trv_1_mcs_3_concat", "trv_1_mcs_4", "trv_2_mcs_4_concat", "trv_2_mcs_6", "trv_5_ext", "trv_5_int", "trv_dri_ext", "trv_dri_mcs_concat" };
 
-const std::vector<std::string> MISC_FILTERS_VALUES{ "默认", "AmbientPUSH", "BeastIntro01", "CAMERA_secuirity_FUZZ", "DeadlineNeon01", "glasses_black", "glasses_Darkblue", "glasses_green", "glasses_orange", "glasses_pink", "glasses_purple", "glasses_yellow", 
+const std::vector<std::string> MISC_FILTERS_VALUES{ "DEFAULT", "AmbientPUSH", "BeastIntro01", "CAMERA_secuirity_FUZZ", "DeadlineNeon01", "glasses_black", "glasses_Darkblue", "glasses_green", "glasses_orange", "glasses_pink", "glasses_purple", "glasses_yellow", 
 "graveyard_shootout", "hud_def_desatcrunch", "hud_def_flash", "lab_none_dark_OVR", "LostTimeDark", "LostTimeFlash", "METRO_Tunnels", "michealspliff", "mp_bkr_int01_garage", "MP_corona_heist_DOF", "mp_gr_int01_black", "MP_heli_cam", "mugShot_lineup", "New_sewers", 
 "NEW_station_unfinished", "NG_filmic04", "NG_filmic11", "NG_filmic12", "NG_filmic16", "NG_filmic17", "NG_filmic18", "NG_filmic19", "plane_inside_mode", "prologue_ending_fog", "prologue_shootout", "rply_brightness_neg", "rply_contrast_neg", "rply_saturation", 
 "SALTONSEA", "secret_camera", "shades_pink", "StuntFastDark", "switch_cam_2", "ufo", "ufo_deathray", "underwater_deep", "v_bahama", "V_FIB_stairs", "WATER_cove", "WATER_hills", "WATER_lab", "WATER_militaryPOOP", "WATER_muddy", "WATER_port", "WATER_resevoir", 
-"WATER_shore", "WATER_silverlake", "WhiteOut" };//屏幕滤镜效果
+"WATER_shore", "WATER_silverlake", "WhiteOut" };
 
-// 修改器控制
-const std::vector<std::string> MISC_TRAINERCONTROL_CAPTIONS{ "按下时", "松开时" };
+// Trainer Controls
+const std::vector<std::string> MISC_TRAINERCONTROL_CAPTIONS{ "On Release", "On Press" };
 extern int TrainerControlIndex;
 
-const std::vector<std::string> MISC_PHONE_BILL_CAPTIONS{ "10 美元", "50 美元", "100 美元", "500 美元", "1000 美元", "5000 美元", "1万 美元", "5万 美元", "10万 美元", "50万 美元", "100万 美元", "500万 美元", "1000万 美元", "5000万 美元", "1亿 美元" };
-const float MISC_PHONE_BILL_VALUES[] = { 10.0, 50.0, 100.0, 500.0, 1000.0, 5000.0, 10000.0, 50000.0, 100000.0, 500000.0, 1000000.0, 5000000.0, 10000000.0, 50000000.0, 100000000.0 };//越狱罚款额
+const std::vector<std::string> MISC_PHONE_BILL_CAPTIONS{ "10$", "50$", "100$", "500$", "1000$", "5000$", "10000$", "50000$", "100000$", "500000$", "1000000$" };
+const float MISC_PHONE_BILL_VALUES[] = { 10.0, 50.0, 100.0, 500.0, 1000.0, 5000.0, 10000.0, 50000.0, 100000.0, 500000.0, 1000000.0 };
 
 extern const Hash PLAYER_ZERO;
 extern const Hash PLAYER_ONE;
@@ -69,7 +69,7 @@ extern const Hash SP0_TOTAL_CASH;
 extern const Hash SP1_TOTAL_CASH;
 extern const Hash SP2_TOTAL_CASH;
 
-const std::vector<std::string> MISC_DEF_MENUTAB_CAPTIONS{ "关", "地图", "简讯", "好友", "相册", "游戏", "设置", "统计", "商店", "在线" };
+const std::vector<std::string> MISC_DEF_MENUTAB_CAPTIONS{ "OFF", "Map", "Brief", "Friends", "Gallery", "Game", "Settings", "Stats", "Store", "Online" };
 const int MISC_DEF_MANUTAB_VALUES[] = { -2, -1, 1, 2, 3, 5, 6, 10, 18, 42 };
 extern int DefMenuTabIndex;
 
@@ -77,120 +77,6 @@ const std::vector<std::string> MISC_PHONE_FREESECONDS_CAPTIONS{ "0", "3", "5", "
 const int MISC_PHONE_FREESECONDS_VALUES[] = { 0, 3, 5, 10, 15 };
 
 extern bool featureGamePause;
-
-// 标题字体选项
-const std::vector<std::string> MISC_FONT_HEADER_CAPTIONS{ "默认", "标准", "花体", "加粗", "特殊" };
-const int MISC_FONT_HEADER_VALUES[] = { 4, 0, 1, 7, 8 };
-extern int FontHeaderIndex;
-extern bool FontHeaderChanged;
-
-// 项目字体选项
-const std::vector<std::string> MISC_FONT_ITEM_CAPTIONS{ "默认", "标准", "花体", "加粗", "特殊" };
-const int MISC_FONT_ITEM_VALUES[] = { 0, 4, 1, 7, 8 };
-extern int FontItemIndex;
-extern bool FontItemChanged;
-
-// 通缉字体选项
-const std::vector<std::string> MISC_FONT_WANTED_CAPTIONS{ "默认", "标准", "花体", "加粗", "特殊" };
-const int MISC_FONT_WANTED_VALUES[] = { 7, 0, 1, 4, 8 };
-extern int FontWantedIndex;
-extern bool FontWantedChanged;
-
-// 状态显示字体选项 (用于FPS、时间、燃料等状态信息)
-const std::vector<std::string> MISC_FONT_STATUS_CAPTIONS{ "默认", "标准", "花体", "加粗", "特殊" };
-const int MISC_FONT_STATUS_VALUES[] = { 4, 0, 1, 7, 8 };
-extern int FontStatusIndex;
-extern bool FontStatusChanged;
-
-// 菜单显示项目数选项
-const std::vector<std::string> MISC_MENU_ITEMS_COUNT_CAPTIONS{ "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50" };
-const int MISC_MENU_ITEMS_COUNT_VALUES[] = { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50 };
-extern int MenuItemsCountIndex;
-extern bool MenuItemsCountChanged;
-
-// 标题栏和菜单项宽度 - 默认 350.0f
-const std::vector<std::string> MISC_MENU_WIDTH_CAPTIONS{ "默认", "200", "250", "260", "270", "280", "290", "300", "310", "320", "330", "340", "360", "370", "380", "390", "400", "500", "600", "700", "800", "900", "1000", "1100", "1200" };
-const float MISC_MENU_WIDTH_VALUES[] = { 350.0f, 200.0f, 250.0f, 260.0f, 270.0f, 280.0f, 290.0f, 300.0f, 310.0f, 320.0f, 330.0f, 340.0f, 360.0f, 370.0f, 380.0f, 390.0f, 400.0f, 500.0f, 600.0f, 700.0f, 800.0f, 900.0f, 1000.0f, 1100.0f, 1200.0f };
-const int MENU_WIDTH_DEFAULT_INDEX = 0;
-extern int MenuWidthIndex;
-extern bool MenuWidthChanged;
-
-// 标题栏高度 - 默认50.0f
-const std::vector<std::string> MISC_MENU_HEIGHT_CAPTIONS{ "默认", "10", "15", "20", "25", "30", "35", "40", "45", "55", "60", "65", "70", "75", "80", "85", "90", "95", "100", "110", "120", "130", "140", "150" };
-const float MISC_MENU_HEIGHT_VALUES[] = { 50.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f, 55.0f, 60.0f, 65.0f, 70.0f, 75.0f, 80.0f, 85.0f, 90.0f, 95.0f, 100.0f, 110.0f, 120.0f, 130.0f, 140.0f, 150.0f };
-const int MENU_HEIGHT_DEFAULT_INDEX = 0;
-extern int MenuHeightIndex;
-extern bool MenuHeightChanged;
-
-// 标题栏顶部偏移量 - 默认 15.0f
-const std::vector<std::string> MISC_MENU_TOP_OFFSET_CAPTIONS{ "默认", "0", "5", "10", "20", "25", "30", "35", "40", "45", "50", "55", "60", "65","70", "75", "80", "85", "90", "95", "100", "110", "120", "130", "140", "150" };
-const float MISC_MENU_TOP_OFFSET_VALUES[] = { 15.0f, 0.0f, 5.0f, 10.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f, 50.0f, 55.0f, 60.0f, 65.0f, 70.0f, 75.0f, 80.0f, 85.0f, 90.0f, 95.0f, 100.0f, 110.0f, 120.0f, 130.0f, 140.0f, 150.0f };
-const int MENU_TOP_OFFSET_DEFAULT_INDEX = 0;
-extern int MenuTopOffsetIndex;
-extern bool MenuTopOffsetChanged;
-
-// 标题栏和菜单项左侧偏移量 - 默认 35.0f
-const std::vector<std::string> MISC_MENU_LEFT_OFFSET_CAPTIONS{ "默认", "0", "5", "10", "15", "20", "25", "30", "40", "45", "50", "100", "200", "300", "400", "450", "500", "550", "600", "650", "700", "750", "800", "820", "840", "860", "880",  "900", "910", "920", "930", "940", "950", "960", "970", "980", "990", "1000", "1100", "1200" };
-const float MISC_MENU_LEFT_OFFSET_VALUES[] = { 35.0f, 0.0f, 5.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 40.0f, 45.0f, 50.0f, 100.0f, 200.0f, 300.0f, 400.0f, 450.0f, 500.0f, 550.0f, 600.0f, 650.0f, 700.0f, 750.0f, 800.0f, 820.0f, 840.0f, 860.0f, 880.0f, 900.0f, 910.0f, 920.0f, 930.0f, 940.0f, 950.0f, 960.0f, 970.0f, 980.0f, 990.0f, 1000.0f, 1100.0f, 1200.0f };
-const int MENU_LEFT_OFFSET_DEFAULT_INDEX = 0;
-extern int MenuLeftOffsetIndex;
-extern bool MenuLeftOffsetChanged;
-
-// 标题文本左侧偏移量 - 默认 45.0f
-const std::vector<std::string> MISC_MENU_TEXT_LEFT_OFFSET_CAPTIONS{ "默认", "0", "5",  "10", "15", "20", "25", "30", "35", "40", "50", "55", "60", "110", "210", "310", "410", "460", "510", "560", "610", "660", "710", "760", "810", "830", "850", "870", "890", "910", "920", "930", "940", "950", "960", "970", "980", "990", "1000", "1010", "1110" };
-const float MISC_MENU_TEXT_LEFT_OFFSET_VALUES[] = { 45.0f, 0.0f, 5.0f, 10.0f, 15.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 50.0f, 55.0f, 60.0f, 110.0f, 210.0f, 310.0f, 410.0f, 460.0f, 510.0f, 560.0f, 610.0f, 660.0f, 710.0f, 760.0f, 810.0f, 830.0f, 850.0f, 870.0f, 890.0f, 910.0f, 920.0f, 930.0f, 940.0f, 950.0f, 960.0f, 970.0f, 980.0f, 990.0f, 1000.0f, 1010.0f, 1110.0f };
-const int MENU_TEXT_LEFT_OFFSET_DEFAULT_INDEX = 0;
-extern int MenuTextLeftOffsetIndex;
-extern bool MenuTextLeftOffsetChanged;
-
-// 菜单项高度 - 默认 30.0f
-const std::vector<std::string> MISC_MENU_ITEM_HEIGHT_CAPTIONS{ "默认", "10", "15", "20", "25", "35", "40", "45", "50", "55", "60" };
-const float MISC_MENU_ITEM_HEIGHT_VALUES[] = { 30.0f, 10.0f, 15.0f, 20.0f, 25.0f, 35.0f, 40.0f, 45.0f, 50.0f, 55.0f, 60.0f };
-const int MENU_ITEM_HEIGHT_DEFAULT_INDEX = 0;
-extern int MenuItemHeightIndex;
-extern bool MenuItemHeightChanged;
-
-// 菜单项间距 - 默认 8.0f
-const std::vector<std::string> MISC_MENU_ITEM_SPACING_CAPTIONS{ "默认", "0", "1", "2", "3", "4", "5", "6", "7", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "50" };
-const float MISC_MENU_ITEM_SPACING_VALUES[] = { 8.0f, 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f, 33.0f, 34.0f, 35.0f, 36.0f, 37.0f, 38.0f, 39.0f, 40.0f, 41.0f, 42.0f, 43.0f, 44.0f, 45.0f, 50.0f };
-const int MENU_ITEM_SPACING_DEFAULT_INDEX = 0;
-extern int MenuItemSpacingIndex;
-extern bool MenuItemSpacingChanged;
-
-// 菜单项文本偏移量 - 默认 10.0f
-const std::vector<std::string> MISC_MENU_ITEM_TEXT_OFFSET_CAPTIONS{ "默认", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "25", "30", "35", "40", "45", "50", "55", "60", "65", "70", "75", "80", "85", "90", "95", "100" };
-const float MISC_MENU_ITEM_TEXT_OFFSET_VALUES[] = { 10.0f, 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f, 19.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f, 50.0f, 55.0f, 60.0f, 65.0f, 70.0f, 75.0f, 80.0f, 85.0f, 90.0f, 95.0f, 100.0f };
-const int MENU_ITEM_TEXT_OFFSET_DEFAULT_INDEX = 0;
-extern int MenuItemTextOffsetIndex;
-extern bool MenuItemTextOffsetChanged;
-
-// 菜单项与标题距离 - 默认 75.0f
-const std::vector<std::string> MISC_MENU_ITEM_TOP_OFFSET_CAPTIONS{ "默认", "10", "20", "25", "30", "35", "40", "45", "50", "55", "60", "65", "70", "80", "85", "90", "95", "100", "105", "110", "115", "120", "125", "130", "135", "140", "145" };
-const float MISC_MENU_ITEM_TOP_OFFSET_VALUES[] = { 75.0f, 20.0f, 25.0f, 30.0f, 35.0f, 40.0f, 45.0f, 50.0f, 55.0f, 60.0f, 65.0f, 70.0f, 80.0f, 85.0f, 90.0f, 95.0f, 100.0f, 105.0f, 110.0f, 115.0f, 120.0f, 125.0f, 130.0f, 135.0f, 140.0f, 145.0f };
-const int MENU_ITEM_TOP_OFFSET_DEFAULT_INDEX = 0;
-extern int MenuItemTopOffsetIndex;
-extern bool MenuItemTopOffsetChanged;
-
-// 预览图左右判断依据 - 默认 500.0f
-const std::vector<std::string> MISC_PREVIEW_POSITION_THRESHOLD_CAPTIONS{ "默认", "200", "300", "400", "450", "550", "600", "650", "700", "750", "800", "850", "900" };
-const float MISC_PREVIEW_POSITION_THRESHOLD_VALUES[] = { 500.0f, 200.0f, 300.0f, 400.0f, 450.0f, 550.0f, 600.0f, 650.0f, 700.0f, 750.0f, 800.0f, 850.0f, 900.0f };
-const int PREVIEW_POSITION_THRESHOLD_DEFAULT_INDEX = 0;
-extern int PreviewPositionThresholdIndex;
-extern bool PreviewPositionThresholdChanged;
-
-// 预览图分辨率适配值 - 默认 1920.0f
-const std::vector<std::string> MISC_PREVIEW_RESOLUTION_SCALE_CAPTIONS{ "默认 (1080P)", "2560 (2k)", "3840 (4K)", "1760", "1680", "1600", "1440", "1366", "1280", "2816", "3072", "3200", "3328",  };
-const float MISC_PREVIEW_RESOLUTION_SCALE_VALUES[] = { 1920.0f, 2560.0f, 3840.0f, 1760.0f, 1680.0f, 1600.0f, 1440.0f, 1366.0f, 1280.0f, 2816.0f, 3072.0f, 3200.0f, 3328.0f };
-const int PREVIEW_RESOLUTION_SCALE_DEFAULT_INDEX = 0;
-extern int PreviewResolutionScaleIndex;
-extern bool PreviewResolutionScaleChanged;
-
-// 预览图间距 - 默认 8.0f
-const std::vector<std::string> MISC_PREVIEW_SPACING_CAPTIONS{ "默认", "0", "1", "2", "3", "4", "5", "6", "7", "9", "10", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "50" };
-const float MISC_PREVIEW_SPACING_VALUES[] = { 8.0f, 0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 9.0f, 10.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f, 17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f, 32.0f, 33.0f, 34.0f, 35.0f, 36.0f, 37.0f, 38.0f, 39.0f, 40.0f, 41.0f, 42.0f, 43.0f, 44.0f, 45.0f, 50.0f };
-const int PREVIEW_SPACING_DEFAULT_INDEX = 0;
-extern int PreviewSpacingIndex;
-extern bool PreviewSpacingChanged;
 
 void process_misc_menu();
 
@@ -222,29 +108,6 @@ void onchange_misc_phone_freeseconds_index(int value, SelectFromListMenuItem* so
 
 void onchange_misc_phone_bike_index(int value, SelectFromListMenuItem* source);
 
-void onchange_misc_font_header_index(int value, SelectFromListMenuItem* source);
-
-void onchange_misc_font_item_index(int value, SelectFromListMenuItem* source);
-
-void onchange_misc_menu_item_top_offset_index(int value, SelectFromListMenuItem* source);
-
-void onchange_misc_font_wanted_index(int value, SelectFromListMenuItem* source);
-
-void onchange_misc_font_status_index(int value, SelectFromListMenuItem* source);
-void onchange_misc_menu_items_count_index(int value, SelectFromListMenuItem* source);
-
-void onchange_misc_preview_position_threshold_index(int value, SelectFromListMenuItem* source);
-void onchange_misc_preview_resolution_scale_index(int value, SelectFromListMenuItem* source);
-void onchange_misc_preview_spacing_index(int value, SelectFromListMenuItem* source);
-
-void process_misc_font_settings_menu();
-
-void process_misc_menu_layout_settings_menu();
-
-void process_misc_vehicle_preview_settings_menu();
-
-void process_misc_menu_key_settings_menu();
-
 bool is_vehicle_preview_enabled();
 
 bool is_hud_hidden();
@@ -256,10 +119,6 @@ void HUD_switching();
 void Traffic_switching();
 
 bool is_jellman_scenery_enabled();
-
-void reset_menu_layout_to_defaults();// 新增：菜单布局默认重置的统一函数声明（供重置/全局重置调用）
-
-extern bool g_MenuLayoutNeedsRefresh;// 新增：菜单布局设置界面刷新标志（用于在重置后强制重建菜单项显示）
 
 extern bool radio_v_checked;
 extern bool featureRealisticRadioVolume;
@@ -328,7 +187,7 @@ struct ScriptTable
 	{
 		if (TablePtr == NULL)
 		{
-			return NULL; //表格初始化尚未发生
+			return NULL; //table initialisation hasnt happened yet
 		}
 		for (int i = 0; i<count; i++)
 		{
@@ -348,7 +207,7 @@ struct GlobalTable
 	bool IsInitialised()const { return *GlobalBasePtr != NULL; }
 };
 
-//电台曲目切换
+//Radio track skipping.
 void SkipRadioFwd1(uint32_t a1);
 static void SkipRadioFwd2Internal(uintptr_t a1, uint32_t a2);
 void SkipRadioFwd2(uint32_t a1);
@@ -358,66 +217,3 @@ intptr_t FindPatternJACCO(const char* bMask, const char* sMask);
 void SInit();
 
 extern bool show_transparency;
-
-// 快捷键按键设置相关常量和变量
-const std::vector<std::string> MISC_HOTKEY_CAPTIONS{ "未绑定", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "小键盘 0", "小键盘 1", "小键盘 2", "小键盘 3", "小键盘 4", "小键盘 5", "小键盘 6", "小键盘 7", "小键盘 8", "小键盘 9", "小键盘 +", "小键盘 -", "小键盘 *", "小键盘 /", "小键盘 .", "Home", "End", "Page Up", "Page Down", "Insert", "Delete", "上箭头", "下箭头", "左箭头", "右箭头", "波浪键", "Tab 制表符键" }; // 76 个
-
-const int MISC_HOTKEY_VALUES[] = { VK_NOTHING, VK_F1, VK_F2, VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9, VK_F10, VK_F11, VK_F12, VK_KEY_0, VK_KEY_1, VK_KEY_2, VK_KEY_3, VK_KEY_4, VK_KEY_5, VK_KEY_6, VK_KEY_7, VK_KEY_8, VK_KEY_9, VK_KEY_A, VK_KEY_B, VK_KEY_C, VK_KEY_D, VK_KEY_E, VK_KEY_F, VK_KEY_G, VK_KEY_H, VK_KEY_I, VK_KEY_J, VK_KEY_K, VK_KEY_L, VK_KEY_M, VK_KEY_N, VK_KEY_O, VK_KEY_P, VK_KEY_Q, VK_KEY_R, VK_KEY_S, VK_KEY_T, VK_KEY_U, VK_KEY_V, VK_KEY_W, VK_KEY_X, VK_KEY_Y, VK_KEY_Z, VK_NUMPAD0, VK_NUMPAD1, VK_NUMPAD2, VK_NUMPAD3, VK_NUMPAD4, VK_NUMPAD5, VK_NUMPAD6, VK_NUMPAD7, VK_NUMPAD8, VK_NUMPAD9, VK_ADD, VK_SUBTRACT, VK_MULTIPLY, VK_DIVIDE, VK_DECIMAL, VK_HOME, VK_END, VK_PRIOR, VK_NEXT, VK_INSERT, VK_DELETE, VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, VK_OEM_3, VK_TAB }; // 76 个
-
-// 快捷键设置索引变量
-extern int HotkeyIndex[9];
-extern bool HotkeyChanged[9];
-extern bool HotkeyCtrl[9];
-extern bool HotkeyAlt[9];
-extern bool HotkeyShift[9];
-
-// 快捷键功能菜单刷新标志
-extern bool g_HotkeyFunctionMenuNeedsRefresh;
-
-// 常用按键设置变量 (7个功能)
-extern int CommonKeyToggleMenuIndex;        // 开关/菜单 - 默认 F4
-extern int CommonKeyMoveUpIndex;            // 向上/移动 - 默认小键盘 8
-extern int CommonKeyMoveDownIndex;          // 向下/移动 - 默认小键盘 2
-extern int CommonKeyMoveLeftIndex;          // 向左/移动 - 默认小键盘 4
-extern int CommonKeyMoveRightIndex;         // 向右/移动 - 默认小键盘 6
-extern int CommonKeyConfirmSelectIndex;     // 确认/选择 - 默认小键盘 5
-extern int CommonKeyBackCancelIndex;       // 返回/取消 - 默认小键盘 0
-extern bool CommonKeyChanged[7];
-
-// 其他按键设置变量 (7个功能)
-extern int OtherKeyToggleFreeMoveIndex;     // 开/关自由移动 - 默认 F6
-extern int OtherKeyVehicleBoostIndex;       // 车辆加速 - 默认小键盘 9
-extern int OtherKeyVehicleStopIndex;        // 停止车辆 - 默认小键盘 3
-extern int OtherKeyVehicleRocketsIndex;     // 车辆发射火箭 - 默认小键盘 +
-extern int OtherKeyLeftBlinkIndex;          // 左转向灯 - 默认左箭头
-extern int OtherKeyRightBlinkIndex;         // 右转向灯 - 默认右箭头
-extern int OtherKeyEmergencyBlinkIndex;     // 打开双闪 - 默认小键盘 .
-extern bool OtherKeyChanged[7];
-
-// 常用按键和其他按键菜单常量
-const int TRAINERCONFIG_COMMON_KEYS = 70;   // 常用按键菜单
-const int TRAINERCONFIG_OTHER_KEYS = 71;    // 其他按键菜单
-
-// 快捷键按键设置菜单处理函数
-std::string get_hotkey_display_caption(int hotkeyIndex);
-std::string get_saved_hotkey_display_caption(int hotkeyIndex);
-bool process_misc_hotkey_key_settings_menu();
-bool onconfirm_hotkey_key_settings_menu(MenuItem<int> choice);
-void save_hotkey_settings_to_xml();
-void write_xml_config_file();
-void reset_hotkey_settings_to_defaults();
-void load_hotkey_settings_from_xml();
-char* keyValToName(int keyValue);
-
-// 常用按键和其他按键菜单处理函数
-void process_misc_common_keys_menu();
-void process_misc_other_keys_menu();
-void onchange_common_key(int value, SelectFromListMenuItem* source);
-void onchange_other_key(int value, SelectFromListMenuItem* source);
-void save_common_other_keys_to_xml();
-void reset_common_other_keys_to_defaults();
-void load_common_other_keys_from_xml();
-std::string get_common_key_display_caption(int keyIndex);
-std::string get_other_key_display_caption(int keyIndex);
-bool is_common_key_duplicate(int commonKeyNum, int keyIndex);
-bool is_other_key_duplicate(int otherKeyNum, int keyIndex);

@@ -1,7 +1,7 @@
 /*
-增强版原生训练器项目的一部分。
+Part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include "..\ui_support\menu_functions.h"
@@ -53,7 +53,7 @@ void begin_prop_placement(SpawnedPropInstance prop)
 	pp_exit_flag = false;
 	currentProp = prop;
 
-	const std::string caption = "物体摆放模式";
+	const std::string caption = "Object Placement";
 
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
 
@@ -66,7 +66,7 @@ void begin_prop_placement(SpawnedPropInstance prop)
 	BOOL bPlayerExists = ENTITY::DOES_ENTITY_EXIST(playerPed);
 	BOOL propExists = ENTITY::DOES_ENTITY_EXIST(currentProp.instance);
 
-	//对象死亡时禁用
+	//Disable on object death
 	if (ENTITY::IS_ENTITY_DEAD(playerPed) || !bPlayerExists || !propExists)
 	{
 		return;
@@ -78,12 +78,12 @@ void begin_prop_placement(SpawnedPropInstance prop)
 	pp_cur_rotation = ENTITY::GET_ENTITY_ROTATION(prop.instance, 0);
 	pp_cur_heading = ENTITY::GET_ENTITY_HEADING(prop.instance);
 
-	//调整游戏摄像机至正常状态
+	//normalise the gameplay camera
 	float tempFloat = CAM::GET_GAMEPLAY_CAM_RELATIVE_PITCH();
 	CAM::SET_GAMEPLAY_CAM_RELATIVE_HEADING(0.0f);
 	CAM::SET_GAMEPLAY_CAM_RELATIVE_PITCH(tempFloat, 0.0f);
 	
-	//计算视距
+	//work out a view distance
 	ENTITY::SET_ENTITY_ROTATION(currentProp.instance, 0, 0, 0, 0, false);
 	Hash modelHash = ENTITY::GET_ENTITY_MODEL(currentProp.instance);
 	Vector3 minDimens;
@@ -91,7 +91,7 @@ void begin_prop_placement(SpawnedPropInstance prop)
 	GAMEPLAY::GET_MODEL_DIMENSIONS(modelHash, &minDimens, &maxDimens);
 	float cameraDistance = max(4.0f, 1.3f * max(maxDimens.x - minDimens.x, maxDimens.y - minDimens.y));
 
-	//创建并配置对象摄像机
+	//create and configure our object camera
 	propCamera = CAM::CREATE_CAM("DEFAULT_SCRIPTED_CAMERA", 0);
 	Vector3 worldCamCoords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(currentProp.instance, 0.0f, -cameraDistance, 2.0f);
 	CAM::SET_CAM_COORD(propCamera, worldCamCoords.x, worldCamCoords.y, worldCamCoords.z);
@@ -106,23 +106,22 @@ void begin_prop_placement(SpawnedPropInstance prop)
 		CAM::SET_FOLLOW_PED_CAM_VIEW_MODE(0);
 	}
 
-	//检查是否生效
+	//check it worked
 	if (!CAM::DOES_CAM_EXIST(propCamera))
 	{
-		set_status_text("相机故障了！");
+		set_status_text("Camera failure");
 		return;
 	}
 
 	ENTITY::SET_ENTITY_QUATERNION(currentProp.instance, 0.0f, 0.0f, 0.0f, 0.0f);
 
-	//开始循环
+	//begin the loop
 	while (true && !pp_exit_flag)
 	{
 		in_placement_mode = true;
 
-		// 绘制物体摆放，菜单标题
-		// 标题文本参数说明：宽度，高度，X偏移(水平方向)，Y偏移(垂直方向)，字体大小 。
-		draw_menu_header_line(caption, 320.0f, 50.0f, 15.0f, 0.0f, 15.0f, false);//是否居中 (默认为false)
+		// draw menu
+		draw_menu_header_line(caption, 350.0f, 50.0f, 15.0f, 0.0f, 15.0f, false);
 
 		make_periodic_feature_call();
 
@@ -136,7 +135,7 @@ void begin_prop_placement(SpawnedPropInstance prop)
 		propExists = ENTITY::DOES_ENTITY_EXIST(currentProp.instance);
 		BOOL camExists = CAM::DOES_CAM_EXIST(propCamera);
 
-		//对象死亡时禁用
+		//Disable on object death
 		if (ENTITY::IS_ENTITY_DEAD(playerPed) || !bPlayerExists || !propExists || !camExists)
 		{
 			pp_exit_flag = true;
@@ -151,11 +150,10 @@ void begin_prop_placement(SpawnedPropInstance prop)
 			break;
 		}
 
-		// 注释掉阻止进入线上模式的代码
-		/*if (NETWORK::NETWORK_IS_GAME_IN_PROGRESS())
+		if (NETWORK::NETWORK_IS_GAME_IN_PROGRESS())
 		{
 			break;
-		}*/
+		}
 
 		/*
 		std::ostringstream ss;
@@ -249,7 +247,7 @@ void update_prop_placement_text()
 
 			numActualLines++;
 
-			UI::SET_TEXT_FONT(fontStatus);//物体移动，默认0
+			UI::SET_TEXT_FONT(0);
 			UI::SET_TEXT_SCALE(0.3, 0.3);
 			if (i == 0 || i == 10 || i >= 17)
 			{
@@ -279,23 +277,23 @@ void update_prop_placement_text()
 
 		int screen_w, screen_h;
 		GRAPHICS::GET_SCREEN_RESOLUTION(&screen_w, &screen_h);
-		float rectWidthScaled = 320 / (float)screen_w;// 计算矩形菜单的宽度
-		float rectHeightScaled = (20 + (numActualLines * 18)) / (float)screen_h;// 计算矩形菜单的长度
-		float rectXScaled = 0 / (float)screen_h;// 计算矩形菜单的 X 轴位置 （水平方向）
-		float rectYScaled = 65 / (float)screen_h;// 计算矩形菜单的 Y 轴位置 （垂直方向）
+		float rectWidthScaled = 350 / (float)screen_w;
+		float rectHeightScaled = (20 + (numActualLines * 18)) / (float)screen_h;
+		float rectXScaled = 0 / (float)screen_h;
+		float rectYScaled = 65 / (float)screen_h;
 
-		// 物体摆放菜单，颜色数组（RGBA 格式：红、绿、蓝、透明度）
 		int rect_col[4] = { 128, 128, 128, 75 };
 
-		// 绘制矩形菜单
-		// 参数依次为：X 轴位置、Y 轴位置、宽度、高度、红色值、绿色值、蓝色值、透明度
-		draw_rect(rectXScaled, rectYScaled, rectWidthScaled, rectHeightScaled, rect_col[0], rect_col[1], rect_col[2], rect_col[3]);
+		// rect
+		draw_rect(rectXScaled, rectYScaled,
+			rectWidthScaled, rectHeightScaled,
+			rect_col[0], rect_col[1], rect_col[2], rect_col[3]);
 	}
 }
 
 void create_prop_placement_help_text()
 {
-	//调试
+	//Debug
 	std::stringstream ss;
 
 	/*ss << "Heading: " << pp_cur_heading << " Rotation: " << pp_cur_rotation.z
@@ -305,51 +303,51 @@ void create_prop_placement_help_text()
 	switch (pp_travel_speed)
 	{
 	case 0:
-		pp_travel_speedStr = "非常慢";
+		pp_travel_speedStr = "Very Slow";
 		break;
 	case 1:
-		pp_travel_speedStr = "  慢  ";
+		pp_travel_speedStr = "Slow";
 		break;
 	case 2:
-		pp_travel_speedStr = "正常";
+		pp_travel_speedStr = "Normal";
 		break;
 	case 3:
-		pp_travel_speedStr = "  快  ";
+		pp_travel_speedStr = "Fast";
 		break;
 	case 4:
-		pp_travel_speedStr = "非常快";
+		pp_travel_speedStr = "Very Fast";
 		break;
 	}
 
 	propPlacerStatusLines.clear();
 
-	propPlacerStatusLines.push_back("物体摆放 默认按键（在 ent-config.xml 中更改）");
-	propPlacerStatusLines.push_back("Q/Z - 上/下  移动");
-	propPlacerStatusLines.push_back("A/D - 左/右  旋转（按 Alt + AD 翻滚）");
-	propPlacerStatusLines.push_back("W/S - 前/后  移动（按 Alt + WS 俯仰）");
-	propPlacerStatusLines.push_back("(   ]  加速    [  减速  )");
-	propPlacerStatusLines.push_back("[ Enter ] 减少/增加  移动速度");
-	propPlacerStatusLines.push_back("T - 切换  时间冻结");
-	propPlacerStatusLines.push_back("G - 切换  物体退出时 冻结状态");
-	propPlacerStatusLines.push_back("H - 隐藏/显示  此帮助界面");
+	propPlacerStatusLines.push_back("Default Object Placement Keys (change in XML):");
+	propPlacerStatusLines.push_back("Q/Z - Move Up/Down");
+	propPlacerStatusLines.push_back("A/D - Rotate Left/Right (Alt: Roll)");
+	propPlacerStatusLines.push_back("W/S - Move Forward/Back (Alt: Pitch)");
+	propPlacerStatusLines.push_back("Alt - Alternate Movement");
+	propPlacerStatusLines.push_back("[ and ] - Decrease/Increase Move Speed");
+	propPlacerStatusLines.push_back("T - Toggle Frozen Time");
+	propPlacerStatusLines.push_back("G - Toggle Object Frozen On Exit");
+	propPlacerStatusLines.push_back("H - Toggle This Help");
 
 	propPlacerStatusLines.push_back(" ");
-	propPlacerStatusLines.push_back("默认手柄按键输入：");
-	propPlacerStatusLines.push_back("扳机键 - 上/下  移动");
-	propPlacerStatusLines.push_back("左/右  肩键 - 旋转操作");
-	propPlacerStatusLines.push_back("A键 - 切换  移动速度");
-	propPlacerStatusLines.push_back("B键 - 切换  时间冻结");
-	propPlacerStatusLines.push_back("Y键 - 切换  物体退出时 冻结状态");
+	propPlacerStatusLines.push_back("Default Controller Input:");
+	propPlacerStatusLines.push_back("Triggers - Move Up/Down");
+	propPlacerStatusLines.push_back("Left/Right Bumper - Rotate");
+	propPlacerStatusLines.push_back("A - Cycle Move Speeds");
+	propPlacerStatusLines.push_back("B - Toggle Frozen Time");
+	propPlacerStatusLines.push_back("Y - Toggle Object Frozen On Exit");
 	propPlacerStatusLines.push_back(" ");
 
-	propPlacerStatusLines.push_back("按下（ 菜单返回键 ）保存并退出此模式！");
+	propPlacerStatusLines.push_back("Press 'Menu Back' to save and exit this mode");
 	propPlacerStatusLines.push_back(" ");
 
-	ss << "当前的移动速度：~HUD_COLOUR_WHITE~" << pp_travel_speedStr;
+	ss << "Current Travel Speed: ~HUD_COLOUR_WHITE~" << pp_travel_speedStr;
 	propPlacerStatusLines.push_back(ss.str());
 	ss.str(""); ss.clear();
 
-	ss << "退出时冻结物体：~HUD_COLOUR_WHITE~" << (currentProp.isImmovable ? "是": "否");
+	ss << "Object Frozen On Exit: ~HUD_COLOUR_WHITE~" << (currentProp.isImmovable ? "Yes": "No");
 	propPlacerStatusLines.push_back(ss.str());
 	ss.str(""); ss.clear();
 
@@ -359,7 +357,7 @@ void create_prop_placement_help_text()
 
 void prop_placement()
 {
-	// 通用变量
+	// common variables
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
 
 	//float tmpHeading = pp_cur_heading += ;

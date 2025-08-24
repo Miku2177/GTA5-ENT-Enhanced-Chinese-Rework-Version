@@ -1,11 +1,11 @@
 /*
-这段代码的部分最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-它现在已成为 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include "teleportation.h"
@@ -20,7 +20,7 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 #include <iostream>   // std::cout
 #include <string>     // std::string, std::stof
 
-// 驾驶到标记点
+// Drive to marker
 float planecurrspeed = 0;
 float curr_roll = -1;
 float curr_pitch = -1;
@@ -50,13 +50,13 @@ bool TelChauffeur_altitude_Changed = true;
 int TelChauffeur_drivingstyles_Index = 0;
 bool TelChauffeur_drivingstyles_Changed = true;
 
-////////////////////////////////// 驾驶到标记点 ////////////////////////////////////
+////////////////////////////////// DRIVE TO MARKER ////////////////////////////////////
 Vector3 get_blip_marker() {
 	static Vector3 zero;
 	Vector3 coords;
 
 	blipFound = false;
-	// 搜索标记点
+	// search for marker blip
 	int blipIterator = UI::_GET_BLIP_INFO_ID_ITERATOR();
 	for (Blip i = UI::GET_FIRST_BLIP_INFO_ID(blipIterator); UI::DOES_BLIP_EXIST(i) != 0; i = UI::GET_NEXT_BLIP_INFO_ID(blipIterator)) {
 		if (UI::GET_BLIP_INFO_ID_TYPE(i) == 4) {
@@ -69,7 +69,7 @@ Vector3 get_blip_marker() {
 		return coords;
 	}
 
-	set_status_text("您还没有设置导航点！");
+	set_status_text("Map marker isn't set");
 	return zero;
 }
 
@@ -79,12 +79,6 @@ void drive_to_marker()
 	curr_veh = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 	speed = ENTITY::GET_ENTITY_VELOCITY(curr_veh);
 	driving_reverse = ENTITY::GET_ENTITY_SPEED_VECTOR(curr_veh, true);
-
-	// 检查是否在飞机中，如果是则禁用代驾功能
-	if (PED::IS_PED_IN_ANY_PLANE(playerPed)) {
-		set_status_text_centre_screen("~r~飞机代驾功能已禁用！\n~w~请使用其他载具进行代驾。");
-		return;
-	}
 
 	if (speed.x < 0) speed.x = speed.x * -1;
 	if (speed.y < 0) speed.y = speed.y * -1;
@@ -194,8 +188,6 @@ void drive_to_marker()
 			AI::TASK_HELI_MISSION(driver_to_marker_pilot, curr_veh, 0, 0, coords_marker_to_drive_to.x, coords_marker_to_drive_to.y, coords_marker_to_drive_to.z, 4, TEL_CHAUFFEUR_SPEED_VALUES[TelChauffeur_speed_IndexN], -1.0, -1.0, 0,
 				TEL_CHAUFFEUR_ALTITUDE_VALUES[TelChauffeur_altitude_Index], -1.0, 32);
 
-		// 飞机代驾功能已禁用 - 以下代码已注释
-		/*
 		if (PED::IS_PED_IN_ANY_PLANE(playerPed)) {
 			planecurrspeed = ENTITY::GET_ENTITY_SPEED(curr_veh);
 			curr_roll = ENTITY::GET_ENTITY_ROLL(curr_veh);
@@ -233,8 +225,6 @@ void drive_to_marker()
 				AI::TASK_PLANE_MISSION(driver_to_marker_pilot, curr_veh, 0, 0, coords_marker_to_drive_to.x, coords_marker_to_drive_to.y, coords_marker_to_drive_to.z, 4, TEL_CHAUFFEUR_SPEED_VALUES[TelChauffeur_speed_IndexN], 0, 90, 0,
 					TEL_CHAUFFEUR_ALTITUDE_VALUES[TelChauffeur_altitude_Index]);
 		}
-		*/
-
 
 		if (featureLandAtDestination) {
 			if (PED::IS_PED_IN_ANY_HELI(playerPed) && tempdistance_x < 20 && tempdistance_y < 20) {
@@ -248,8 +238,6 @@ void drive_to_marker()
 				}
 			}
 
-			// 飞机着陆代码已注释，因为飞机代驾功能已禁用
-			/*
 			if (PED::IS_PED_IN_ANY_PLANE(playerPed) && dist_to_land_diff < temp_dist && altitude_reached == true) {
 				if (dist_to_land_diff > 399 && dist_to_land_diff < temp_dist) {
 					AI::TASK_PLANE_MISSION(driver_to_marker_pilot, curr_veh, 0, 0, coords_marker_to_drive_to.x, coords_marker_to_drive_to.y, coords_marker_to_drive_to.z, 4, 30, 0, 90, 0, 200);
@@ -277,7 +265,6 @@ void drive_to_marker()
 					marker_been_set = false;
 				}
 			}
-			*/
 		}
 
 		marker_been_set = true;

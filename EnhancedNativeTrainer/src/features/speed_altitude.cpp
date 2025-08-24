@@ -1,11 +1,11 @@
 /*
-部分代码最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-现为增强版原生训练器项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include "vehicles.h"
@@ -41,7 +41,7 @@ bool PositionChanged = true;
 float textX, textY = -1;
 float rectXScaled, rectYScaled = -1;
 
-//////////////////////////////////////////// 显示速度 / 高度 ///////////////////////////////////////////
+//////////////////////////////////////////// SHOW SPEED / ALTITUDE ///////////////////////////////////////////
 void update_speed_text(int speed, Vector3 player_coords)
 {
 	std::string speedometerStatusLines[1];
@@ -50,25 +50,20 @@ void update_speed_text(int speed, Vector3 player_coords)
 	int col2_G = ENTColor::colsMenu[5].rgba[1];
 	int col2_B = ENTColor::colsMenu[5].rgba[2];
 
-	// 速度高度字体颜色：将字体颜色改为白色（原为深橙色）
-	col2_R = 255;
-	col2_G = 242;
-	col2_B = 0;
-
 	int numLines = sizeof(speedometerStatusLines) / sizeof(speedometerStatusLines[0]);
 
 	if (featureKMH) {
-		ss << "千米/时:    " << round((speed * 1.609344) * 2.3);
+		ss << "KPH:   " << round((speed * 1.609344) * 2.3);
 
 		if (featureAltitude) {
-			ss << "\n海拔高度:  " << floor(player_coords.z * 1) / 1;
+			ss << "\nALT:     " << floor(player_coords.z * 1) / 1;
 		}
 	}
 	else {
-		ss << "英里/时:    " << round(speed * 2.3);
+		ss << "MPH:   " << round(speed * 2.3);
 
 		if (featureAltitude) {
-			ss << "\n海拔高度:  " << floor(player_coords.z * 1) / 1;
+			ss << "\nALT:     " << floor(player_coords.z * 1) / 1;
 		}
 	}
 
@@ -78,15 +73,15 @@ void update_speed_text(int speed, Vector3 player_coords)
 	int screen_w, screen_h;
 	GRAPHICS::GET_SCREEN_RESOLUTION(&screen_w, &screen_h);
 
-	if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 0) { // 右下角
+	if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 0) { //Bottom Right
 		textX = (97.4 - (size * 2.5)) / 100;
 		textY = (85 - (size * 1.2)) / 100;
 	}
-	if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 1) { // 底部居中
+	if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 1) { //Bottom Center
 		textX = (50 - (size * 1.1)) / 100;
 		textY = (95 - (size * 1.2)) / 100;
 	}
-	if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 2) { // 右上角
+	if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 2) { //Top Right
 		textX = (97.4 - (size * 2.5)) / 100;
 		textY = (10.5 + (size * 0.0001)) / 100;
 	}
@@ -101,41 +96,41 @@ void update_speed_text(int speed, Vector3 player_coords)
 		textY += 0.025f;
 	}
 
-	//if (size < 4) { // 绘制背景
-	if (SpeedSizeIndex < 1) { // 绘制背景
-		if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 0) { // 右下角
+	//if (size < 4) { // draw background
+	if (SpeedSizeIndex < 1) { // draw background
+		if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 0) { //Bottom Right
 			rectXScaled = 1 - ((300 / (float)screen_w) / 4);
 			rectYScaled = 0.95 - (((0 + (1 * 18)) / (float)screen_h) * 5);
 		}
-		if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 1) { // 底部居中
+		if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 1) { //Bottom Center
 			rectXScaled = 0.55 - ((230 / (float)screen_w) / 4);
 			rectYScaled = 1 - (((0 + (1 * 11)) / (float)screen_h) * 5);
 		}
-		if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 2) { // 右上角
+		if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 2) { //Top Right
 			rectXScaled = 1 - ((300 / (float)screen_w) / 4);
 			rectYScaled = 0.24 - (((0 + (1 * 18)) / (float)screen_h) * 5);
 		}
 		float rectWidthScaled = (230 / (float)screen_w) / 2;
 		float rectHeightScaled = (0 + (1 * 18)) / (float)screen_h;
-		int rect_col[4] = { 0, 0, 0, 180 }; // 128, 128, 128, 75   速度显示 背景透明度
+		int rect_col[4] = { 0, 0, 0, 255 }; // 128, 128, 128, 75
 		GRAPHICS::DRAW_RECT(rectXScaled, rectYScaled, rectWidthScaled, rectHeightScaled, rect_col[0], rect_col[1], rect_col[2], rect_col[3]);
 
 		if (featureAltitude) {
-			if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 0) { // 右下角
+			if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 0) { //Bottom Right
 				rectXScaled = 1 - ((300 / (float)screen_w) / 4);
 				rectYScaled = 0.95 - (((0 + (1 * 18)) / (float)screen_h) * 5) + ((0 + (1 * 18)) / (float)screen_h);
 			}
-			if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 1) { // 底部居中
+			if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 1) { //Bottom Center
 				rectXScaled = 0.55 - ((230 / (float)screen_w) / 4);
 				rectYScaled = 1 - (((0 + (1 * 11)) / (float)screen_h) * 5) + ((0 + (1 * 18)) / (float)screen_h);
 			}
-			if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 2) { // 右上角
+			if (NPC_RAGDOLL_VALUES[SpeedPositionIndexN] == 2) { //Top Right
 				rectXScaled = 1 - ((300 / (float)screen_w) / 4);
 				rectYScaled = 0.24 - (((0 + (1 * 18)) / (float)screen_h) * 5) + ((0 + (1 * 18)) / (float)screen_h);
 			}
 			float rectWidthScaled = (230 / (float)screen_w) / 2;
 			float rectHeightScaled = (0 + (1 * 18)) / (float)screen_h;
-			int rect_col[4] = { 0, 0, 0, 180 }; // 128, 128, 128, 75   高度显示 背景透明度
+			int rect_col[4] = { 0, 0, 0, 255 }; // 128, 128, 128, 75
 			GRAPHICS::DRAW_RECT(rectXScaled, rectYScaled, rectWidthScaled, rectHeightScaled, rect_col[0], rect_col[1], rect_col[2], rect_col[3]);
 		}
 	}
@@ -143,14 +138,14 @@ void update_speed_text(int speed, Vector3 player_coords)
 
 void update_speedaltitude(Ped playerPed) {
 
-	// 步行
+	// On Foot
 	if (featureSpeedOnFoot) {
 		if (!PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 			update_speed_text(ENTITY::GET_ENTITY_SPEED(playerPed), ENTITY::GET_ENTITY_COORDS(playerPed, true));
 		}
 	}
 
-	// 在地面上
+	// On The Ground
 	if (featureSpeedOnGround) {
 		if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 			Entity veh = PED::GET_VEHICLE_PED_IS_USING(playerPed);
@@ -160,7 +155,7 @@ void update_speedaltitude(Ped playerPed) {
 		}
 	}
 
-	// 在空中
+	// In The Air
 	if (featureSpeedInAir) {
 		if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 			Entity veh = PED::GET_VEHICLE_PED_IS_USING(playerPed);

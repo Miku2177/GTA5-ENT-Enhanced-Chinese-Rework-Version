@@ -1,20 +1,20 @@
 /*
-这段代码的部分内容最初来源于 GTA V SCRIPT HOOK SDK。
+Some of this code began its life as a part of GTA V SCRIPT HOOK SDK.
 http://dev-c.com
 (C) Alexander Blade 2015
 
-现在它是 Enhanced Native Trainer 项目的一部分。
+It is now part of the Enhanced Native Trainer project.
 https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
-(C) Rob Pridham 及其他贡献者 2015
+(C) Rob Pridham and fellow contributors 2015
 */
 
 #include "vehicles.h"
-#include <Windows.h>
 #include "fuel.h"
 #include "enginedegrade.h"
 #include "road_laws.h"
 #include "speed_altitude.h"
 #include "..\features\vehmodmenu.h"
+#include "..\features\function_resolver.h"
 #include "hotkeys.h"
 #include "script.h"
 #include "..\ui_support\menu_functions.h"
@@ -22,7 +22,6 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 #include "..\debug\debuglog.h"
 #include "area_effect.h"
 #include <fstream>
-#include <sstream>
 #include "vehicle_weapons.h"
 #include <string>
 #include <iterator>
@@ -32,14 +31,11 @@ https://github.com/gtav-ent/GTAV-EnhancedNativeTrainer
 #include <vector>
 #include <cstdlib>
 #include <unordered_map>
-#include <map>
 #include "../utils.h"
-#include <comdef.h>
-#import <msxml6.dll>
 
 using namespace std;
 
-//车辆无敌模式
+//vehicle invincibility
 int VehInvincibilityIndex = 0;
 bool VehInvincibilityChanged = true;
 bool featureVehInvincibleUpdated = false;
@@ -164,7 +160,7 @@ bool restored_v = false;
 bool being_in_city = false;
 bool being_on_motorway = false;
 
-//记住车辆选项变量
+// Remember Vehicles Option Variables
 Blip blip_veh = -1;
 std::vector<Blip> BLIPTABLE_VEH;
 std::vector<Vehicle> VEHICLES_REMEMBER;
@@ -200,467 +196,9 @@ int activeLineIndexFuel = 0;
 int activeLineIndexEngineDegrade = 0;
 int activeLineIndexRemember = 0;
 int activeLineIndexCarSpawnMenu = 0;
-int activeLineIndexCustomCarSpawnMenu = 0;
 int activeLineIndexRoadLaws = 0;
 std::string activeSavedVehicleSlotName;
 int lastKnownSavedVehicleCount = 0;
-
-// 自定义车辆（外置 XML）缓存
-static std::map<std::string, std::vector<std::pair<std::string, std::string>>> g_CustomVehicles; // 分类 -> [(model, title)]
-static std::vector<std::string> g_CustomVehicleCategories; // 分类顺序
-static FILETIME g_LastXmlModifyTime = {0}; // XML文件最后修改时间
-
-static std::string BstrToUtf8(BSTR b)
-{
-    if (b == nullptr) return std::string("");
-    int len = SysStringLen(b);
-    if (len <= 0) return std::string("");
-    int size = WideCharToMultiByte(CP_UTF8, 0, b, len, nullptr, 0, nullptr, nullptr);
-    std::string out;
-    out.resize(size);
-    WideCharToMultiByte(CP_UTF8, 0, b, len, &out[0], size, nullptr, nullptr);
-    return out;
-}
-
-static bool is_preview_xml_modified(const char* xmlPath)
-{
-	WIN32_FIND_DATAA findData;
-	HANDLE hFind = FindFirstFileA(xmlPath, &findData);
-	if (hFind == INVALID_HANDLE_VALUE) {
-		return false;
-	}
-	FindClose(hFind);
-
-	if (CompareFileTime(&findData.ftLastWriteTime, &g_LastPreviewXmlModifyTime) > 0) {
-		g_LastPreviewXmlModifyTime = findData.ftLastWriteTime;
-		return true;
-	}
-	return false;
-}
-
-// 检查XML文件是否已修改
-static bool is_xml_file_modified(const char* xmlPath)
-{
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA(xmlPath, &findData);
-    if (hFind == INVALID_HANDLE_VALUE) {
-        return false; // 文件不存在
-    }
-    FindClose(hFind);
-    
-    // 比较文件修改时间
-    if (CompareFileTime(&findData.ftLastWriteTime, &g_LastXmlModifyTime) > 0) {
-        g_LastXmlModifyTime = findData.ftLastWriteTime;
-        return true; // 文件已修改
-    }
-    return false; // 文件未修改
-}
-
-bool create_sample_vehicles_xml(const char* xmlPath)
-{
-	// 创建目录（如果不存在）
-	std::string pathStr(xmlPath);
-	size_t lastSlash = pathStr.find_last_of("/\\");
-	if (lastSlash != std::string::npos) {
-		std::string dirPath = pathStr.substr(0, lastSlash);
-		CreateDirectoryA(dirPath.c_str(), NULL);
-	}
-
-	// 创建示例XML文件
-	std::ofstream file(xmlPath, std::ios::out | std::ios::trunc);
-	if (!file.is_open()) {
-		return false;
-	}
-
-	file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-	file << "<vehicles>\n";
-	file << "  <!-- 示例分类：超级跑车 -->\n";
-	file << "  <category name=\"超级跑车\">\n";
-	file << "    <vehicle model=\"ADDER\" title=\"特卢菲 灵蛇\" />\n";
-	file << "    <vehicle model=\"VOLTIC\" title=\"旋风 狂雷\" />\n";
-	file << "    <vehicle model=\"CHEETAH\" title=\"古罗帝 猎豹\" />\n";
-	file << "  </category>\n";
-	file << "  \n";
-	file << "  <!-- 示例分类：跑车 -->\n";
-	file << "  <category name=\"跑车\">\n";
-	file << "    <vehicle model=\"FELTZER2\" title=\"贝飞特 飞特者\" />\n";
-	file << "    <vehicle model=\"SURANO\" title=\"贝飞特 速雷\" />\n";
-	file << "    <vehicle model=\"BLISTA2\" title=\"丁卡 小型旅行家\" />\n";
-	file << "  </category>\n";
-	file << "  \n";
-	file << "  <!-- 示例分类：经典跑车 -->\n";
-	file << "  <category name=\"经典跑车\">\n";
-	file << "    <vehicle model=\"MANANA\" title=\"亚班尼 明日之星\" />\n";
-	file << "    <vehicle model=\"TORNADO2\" title=\"绝致 旋风 敞篷\" />\n";
-	file << "    <vehicle model=\"PEYOTE\" title=\"威皮 佩优特\" />\n";
-	file << "  </category>\n";
-	file << "  \n";
-	file << "  <!-- 示例分类：轿跑车 -->\n";
-	file << "  <category name=\"轿跑车\">\n";
-	file << "    <vehicle model=\"EXEMPLAR\" title=\"浪子 典范\" />\n";
-	file << "    <vehicle model=\"COGCABRIO\" title=\"埃努斯 至尊慧眼\" />\n";
-	file << "    <vehicle model=\"FELON\" title=\"兰帕达提 恶龙\" />\n";
-	file << "  </category>\n";
-	file << "  \n";
-	file << "  <!-- 示例分类：轿车 -->\n";
-	file << "  <category name=\"轿车\">\n";
-	file << "    <vehicle model=\"EMPEROR\" title=\"亚班尼 皇霸天\" />\n";
-	file << "    <vehicle model=\"FUGITIVE\" title=\"雪佛 流星\" />\n";
-	file << "    <vehicle model=\"INTRUDER\" title=\"卡林 入侵者\" />\n";
-	file << "  </category>\n";
-	file << "</vehicles>\n";
-
-	file.close();
-	write_text_to_log_file("已创建示例 ent-vehicles.xml 文件: " + std::string(xmlPath));
-	return true;
-}
-
-static bool load_custom_vehicles_from_xml(const char* xmlPath)
-{
-	g_CustomVehicles.clear();
-	g_CustomVehicleCategories.clear();
-
-	// 安全的 COM 初始化
-	HRESULT hr = CoInitialize(NULL);
-	// 仅在 S_OK / S_FALSE 时需要 CoUninitialize
-	const bool needUninit = (hr == S_OK || hr == S_FALSE);
-	if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
-		write_text_to_log_file("COM 初始化失败，错误码: " + std::to_string(hr));
-		return false;
-	}
-
-	MSXML2::IXMLDOMDocumentPtr spXMLDoc;
-	spXMLDoc.CreateInstance(__uuidof(MSXML2::DOMDocument60));
-	// 关键小改：使用 _variant_t 传入路径
-	if (!spXMLDoc->load(_variant_t(xmlPath)))
-	{
-		write_text_to_log_file("未找到自定义车辆 XML，路径: " + std::string(xmlPath));
-		spXMLDoc.Release();
-		if (needUninit) CoUninitialize();
-		return false;
-	}
-
-	IXMLDOMNodeListPtr categories = spXMLDoc->selectNodes(L"//vehicles/category");
-	long length = 0;
-	categories->get_length(&length);
-	for (long i = 0; i < length; i++)
-	{
-		IXMLDOMNode* catNode = nullptr;
-		categories->get_item(i, &catNode);
-		if (!catNode) continue;
-
-		IXMLDOMNamedNodeMap* attribs = nullptr;
-		catNode->get_attributes(&attribs);
-
-		std::string categoryName;
-		if (attribs)
-		{
-			long length_attribs = 0;
-			attribs->get_length(&length_attribs);
-			for (long j = 0; j < length_attribs; j++)
-			{
-				IXMLDOMNode* attribNode = nullptr;
-				attribs->get_item(j, &attribNode);
-				if (!attribNode) continue;
-
-				BSTR nameBstr = nullptr;
-				attribNode->get_nodeName(&nameBstr);
-				if (nameBstr && wcscmp(nameBstr, L"name") == 0)
-				{
-					VARIANT var; VariantInit(&var);
-					attribNode->get_nodeValue(&var);
-					categoryName = BstrToUtf8(V_BSTR(&var));
-					VariantClear(&var); // 小改：释放 VARIANT
-				}
-				if (nameBstr) SysFreeString(nameBstr);
-				attribNode->Release();
-			}
-			attribs->Release();
-		}
-
-		if (!categoryName.empty())
-		{
-			if (g_CustomVehicles.find(categoryName) == g_CustomVehicles.end())
-			{
-				g_CustomVehicles[categoryName] = {};
-				g_CustomVehicleCategories.push_back(categoryName);
-			}
-
-			// 读取此分类中的车辆
-			IXMLDOMNodeList* vehNodes = nullptr;
-			catNode->selectNodes(L"./vehicle", &vehNodes);
-			if (vehNodes)
-			{
-				long vlen = 0;
-				vehNodes->get_length(&vlen);
-				for (long vi = 0; vi < vlen; ++vi)
-				{
-					IXMLDOMNode* vNode = nullptr;
-					vehNodes->get_item(vi, &vNode);
-					if (!vNode) continue;
-
-					IXMLDOMNamedNodeMap* vAttribs = nullptr;
-					vNode->get_attributes(&vAttribs);
-
-					std::string modelName;
-					std::string titleName;
-
-					if (vAttribs)
-					{
-						long v_attr_len = 0;
-						vAttribs->get_length(&v_attr_len);
-						for (long k = 0; k < v_attr_len; ++k)
-						{
-							IXMLDOMNode* aNode = nullptr;
-							vAttribs->get_item(k, &aNode);
-							if (!aNode) continue;
-
-							BSTR aname = nullptr;
-							aNode->get_nodeName(&aname);
-							if (aname && wcscmp(aname, L"model") == 0)
-							{
-								VARIANT var; VariantInit(&var);
-								aNode->get_nodeValue(&var);
-								modelName = BstrToUtf8(V_BSTR(&var));
-								VariantClear(&var); // 小改
-							}
-							else if (aname && wcscmp(aname, L"title") == 0)
-							{
-								VARIANT var; VariantInit(&var);
-								aNode->get_nodeValue(&var);
-								titleName = BstrToUtf8(V_BSTR(&var));
-								VariantClear(&var); // 小改
-							}
-							if (aname) SysFreeString(aname);
-							aNode->Release();
-						}
-						vAttribs->Release();
-					}
-
-					if (!modelName.empty())
-					{
-						g_CustomVehicles[categoryName].push_back(std::make_pair(modelName, titleName));
-					}
-
-					vNode->Release();
-				}
-
-				vehNodes->Release();
-			}
-		}
-
-		catNode->Release();
-	}
-
-	spXMLDoc.Release();
-	if (needUninit) CoUninitialize();
-
-	return !g_CustomVehicleCategories.empty();
-}
-
-static bool ensure_custom_vehicles_loaded()
-{
-	const char* xmlPath = "Enhanced Native Trainer/Vehicle/ent-vehicles.xml";
-
-	// 只检测一次，避免重复调用导致时间戳被提前更新的歧义
-	bool modified = is_xml_file_modified(xmlPath);
-
-	// 已有缓存且文件未修改：直接复用
-	if (!g_CustomVehicleCategories.empty() && !modified) {
-		return true;
-	}
-
-	// 已有缓存且文件修改：提示热重载
-	if (modified && !g_CustomVehicleCategories.empty()) {
-		write_text_to_log_file("检测到 ent-vehicles.xml 文件已修改，正在重新加载...");
-	}
-
-	// 加载/重载
-	if (load_custom_vehicles_from_xml(xmlPath)) {
-		return true;
-	}
-
-	// 文件不存在或无效：创建示例文件并重试
-	if (!create_sample_vehicles_xml(xmlPath)) {
-		write_text_to_log_file("无法创建示例 ent-vehicles.xml 文件");
-		return false;
-	}
-
-	if (load_custom_vehicles_from_xml(xmlPath)) {
-		return true;
-	}
-
-	write_text_to_log_file("创建示例文件后仍无法加载 ent-vehicles.xml");
-	return false;
-}
-
-bool create_sample_vehicle_previews_xml(const char* xmlPath)
-{
-	// 创建目录（如果不存在）
-	std::string pathStr(xmlPath);
-	size_t lastSlash = pathStr.find_last_of("/\\");
-	if (lastSlash != std::string::npos) {
-		std::string dirPath = pathStr.substr(0, lastSlash);
-		CreateDirectoryA(dirPath.c_str(), NULL);
-	}
-
-	// 创建示例XML文件
-	std::ofstream file(xmlPath, std::ios::out | std::ios::trunc);
-	if (!file.is_open()) {
-		return false;
-	}
-
-	file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-	file << "<vehicle_previews>\n";
-	file << "  <!-- 示例车辆预览图配置 -->\n";
-	file << "  <!-- model: 车辆模型名称（大写或小写都行） -->\n";
-	file << "  <!-- dict: 预览图存放位置，默认 ENT_vehicle_previews.ytd 里-->\n";
-	file << "  <!-- dict: 这项不能修改，默认 ENT_vehicle_previews -->\n";
-	file << "  <!-- image: 图片名称 （随你喜欢修改）-->\n";
-	file << "  <!-- 原先存在的预览图，你可以在这里再次添加，会自动覆盖游戏内置的预览图 -->\n";
-	file << "  <vehicle model=\"模型名称\" dict=\"ENT_vehicle_previews\" image=\"图片名称\" />\n";
-	file << "  <vehicle model=\"模型名称\" dict=\"ENT_vehicle_previews\" image=\"图片名称\" />\n";
-	file << "  <vehicle model=\"模型名称\" dict=\"ENT_vehicle_previews\" image=\"图片名称\" />\n";
-	file << "  <vehicle model=\"模型名称\" dict=\"ENT_vehicle_previews\" image=\"图片名称\" />\n";
-	file << "  <vehicle model=\"模型名称\" dict=\"ENT_vehicle_previews\" image=\"图片名称\" />\n";
-	file << "  <vehicle model=\"模型名称\" dict=\"ENT_vehicle_previews\" image=\"图片名称\" />\n";
-	file << "</vehicle_previews>\n";
-
-	file.close();
-	write_text_to_log_file("已创建示例 ent-vehicle-previews.xml 文件: " + std::string(xmlPath));
-	return true;
-}
-
-bool load_custom_vehicle_previews_from_xml(const char* xmlPath)
-{
-	g_CustomVehicleImages.clear();
-
-	// 安全的 COM 初始化
-	HRESULT hr = CoInitialize(NULL);
-	// 仅在 S_OK / S_FALSE 时需要 CoUninitialize
-	const bool needUninit = (hr == S_OK || hr == S_FALSE);
-	if (FAILED(hr) && hr != RPC_E_CHANGED_MODE) {
-		write_text_to_log_file("COM 初始化失败，错误码: " + std::to_string(hr));
-		return false;
-	}
-
-	MSXML2::IXMLDOMDocumentPtr spXMLDoc;
-	spXMLDoc.CreateInstance(__uuidof(MSXML2::DOMDocument60));
-	// 使用 _variant_t 传入路径
-	if (!spXMLDoc->load(_variant_t(xmlPath)))
-	{
-		write_text_to_log_file("未找到车辆预览图 XML，路径: " + std::string(xmlPath));
-		spXMLDoc.Release();
-		if (needUninit) CoUninitialize();
-		return false;
-	}
-
-	IXMLDOMNodeListPtr vehicles = spXMLDoc->selectNodes(L"//vehicle_previews/vehicle");
-	long length = 0;
-	vehicles->get_length(&length);
-	for (long i = 0; i < length; i++)
-	{
-		IXMLDOMNode* vehNode = nullptr;
-		vehicles->get_item(i, &vehNode);
-		if (!vehNode) continue;
-
-		IXMLDOMNamedNodeMap* attribs = nullptr;
-		vehNode->get_attributes(&attribs);
-
-		std::string modelName;
-		std::string dictName;
-		std::string imageName;
-
-		if (attribs)
-		{
-			long length_attribs = 0;
-			attribs->get_length(&length_attribs);
-			for (long j = 0; j < length_attribs; j++)
-			{
-				IXMLDOMNode* attribNode = nullptr;
-				attribs->get_item(j, &attribNode);
-				if (!attribNode) continue;
-
-				BSTR nameBstr = nullptr;
-				attribNode->get_nodeName(&nameBstr);
-				if (nameBstr && wcscmp(nameBstr, L"model") == 0)
-				{
-					VARIANT var; VariantInit(&var);
-					attribNode->get_nodeValue(&var);
-					modelName = BstrToUtf8(V_BSTR(&var));
-					VariantClear(&var);
-				}
-				else if (nameBstr && wcscmp(nameBstr, L"dict") == 0)
-				{
-					VARIANT var; VariantInit(&var);
-					attribNode->get_nodeValue(&var);
-					dictName = BstrToUtf8(V_BSTR(&var));
-					VariantClear(&var);
-				}
-				else if (nameBstr && wcscmp(nameBstr, L"image") == 0)
-				{
-					VARIANT var; VariantInit(&var);
-					attribNode->get_nodeValue(&var);
-					imageName = BstrToUtf8(V_BSTR(&var));
-					VariantClear(&var);
-				}
-				if (nameBstr) SysFreeString(nameBstr);
-				attribNode->Release();
-			}
-			attribs->Release();
-		}
-
-		if (!modelName.empty() && !dictName.empty() && !imageName.empty())
-		{
-			// 将模型名称转换为哈希值
-			Hash modelHash = rage::joaat(modelName.c_str());
-			g_CustomVehicleImages[modelHash] = std::make_pair(dictName, imageName);
-		}
-
-		vehNode->Release();
-	}
-
-	spXMLDoc.Release();
-	if (needUninit) CoUninitialize();
-
-	return !g_CustomVehicleImages.empty();
-}
-
-bool ensure_custom_vehicle_previews_loaded()
-{
-	const char* xmlPath = "Enhanced Native Trainer/Vehicle/ent-vehicle-previews.xml";
-
-	// 若已有缓存，直接返回，不再进行热重载
-	if (!g_CustomVehicleImages.empty()) {
-		return true;
-	}
-
-	// 检查文件是否存在
-	WIN32_FIND_DATAA findData;
-	HANDLE hFind = FindFirstFileA(xmlPath, &findData);
-	if (hFind != INVALID_HANDLE_VALUE) {
-		FindClose(hFind);
-		g_LastPreviewXmlModifyTime = findData.ftLastWriteTime;
-
-		// 加载
-		if (load_custom_vehicle_previews_from_xml(xmlPath)) {
-			return true;
-		}
-	} else {
-		// 文件不存在：尝试创建示例后加载
-		if (!create_sample_vehicle_previews_xml(xmlPath)) {
-			write_text_to_log_file("无法创建示例 ent-vehicle-previews.xml 文件");
-			return false;
-		}
-		if (load_custom_vehicle_previews_from_xml(xmlPath)) {
-			return true;
-		}
-		write_text_to_log_file("创建示例文件后仍无法加载 ent-vehicle-previews.xml");
-	}
-
-	return false;
-}
-
 bool vehSaveMenuInterrupt = false;
 bool vehSaveSlotMenuInterrupt = false;
 bool requireRefreshOfVehSaveSlots = false;
@@ -668,116 +206,116 @@ bool requireRefreshOfVehSlotMenu = false;
 
 bool featureShowIgnAnim = true;
 
-//抛锚变量
+// Drop Anchor Variables
 Vector3 coords_b;
 Object b_rope = -1;
 Vehicle veh_anchor = -1;
 bool anchor_dropped = false;
 
-const std::vector<std::string> VEH_SPEED_BOOST_CAPTIONS{"关", "仅在移动时启用", "超级加速", "极限超级加速"};
+const std::vector<std::string> VEH_SPEED_BOOST_CAPTIONS{"OFF", "Only When Already Moving", "Nothing Can Stop Me", "Fastest In The World"};
 int speedBoostIndex = 0;
 
-//引擎动力相关
+// engine power stuff
 int engPowMultIndex = 0;
 
 bool burnoutApplied = false;
 bool engPowMultApplied = false;
 
-//车辆质量相关
+//vehicle mass stuff
 int VehMassMultIndex = 0;
 int current_player_forceshieldN = 0;
 
-//转向灯
-const std::vector<std::string> VEH_TURN_SIGNALS_CAPTIONS{ "关", "仅限手动", "< 10 (KMH)", "< 20 (KMH)", "< 30 (KMH)", "< 40 (KMH)", "< 60 (KMH)", "< 80 (KMH)", "< 100 (KMH)", "< 120 (KMH)", "< 140 (KMH)", "< 160 (KMH)", "< 180 (KMH)", "< 200 (KMH)" };//单位KMH
-const int VEH_TURN_SIGNALS_VALUES[] = { 0, 1, 6, 12, 19, 25, 37, 50, 62, 75, 87, 99, 112, 124 };//单位MPH
+//Turn Signals
+const std::vector<std::string> VEH_TURN_SIGNALS_CAPTIONS{ "OFF", "Manual Only", "< 10 (MPH)", "< 20 (MPH)", "< 30 (MPH)", "< 40 (MPH)", "< 60 (MPH)", "< 80 (MPH)", "< 100 (MPH)", "< 120 (MPH)", "< 140 (MPH)", "< 160 (MPH)", "< 180 (MPH)", "< 200 (MPH)" };
+const int VEH_TURN_SIGNALS_VALUES[] = { 0, 1, 5, 10, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 int turnSignalsIndex = 0;
 
-//转向灯角度
+//Turn Signals Angle
 //const std::vector<std::string> VEH_TURN_SIGNALS_ANGLE_CAPTIONS{ "0", "10", "20", "30", "40", "50", "60", "70", "80", "90", "100" };
 //const int VEH_TURN_SIGNALS_ANGLE_VALUES[] = { 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
 int turnSignalsAngleIndex = 3;
 int NitrousPowerIndex = 1;
 
-//转向灯关闭加速度
+//Turn Signals Off Acceleration
 int turnSignalsAccelerationIndex = 3;
 int JumpyVehIndex = 0;
 int HeavyVehIndex = 0;
 
-//自定义引擎动力倍增器
+//Custom Engine Power Multiplier
 int engCustomPowMultIndex = 0;
 int old_c_engine_index = 0;
 
-//车辆隐身
+//Vehicle Invisibility
 int VehInvisIndexN = 0;
 bool is_invisible = false;
 
-//可视化车辆转向灯（图标）
-const std::vector<std::string> VEH_VISLIGHT_CAPTIONS{ "关", "1x", "3x", "5x", "7x", "10x", "12x" };
+//Visualize Vehicle Indicators (Sprite)
+const std::vector<std::string> VEH_VISLIGHT_CAPTIONS{ "OFF", "1x", "3x", "5x", "7x", "10x", "12x" };
 const double VEH_VISLIGHT_VALUES[] = { 0, 0.01, 0.03, 0.05, 0.07, 0.1, 0.2 };
 int VisLightIndex = 0;
 
-//可视化车辆转向灯（矢量）
+//Visualize Vehicle Indicators (Vector)
 int VisLight3dIndex = 0;
 
-//速度限制器
+//Speed Limiter
 int speedLimiterIndex = 0;
 int DoorAutolockIndex = 0;
 int speedCityLimiterIndex = 0;
 int speedCountryLimiterIndex = 0;
 
-//关闭车灯
-const std::vector<std::string> VEH_LIGHTSOFF_CAPTIONS{ "从不", "仅限白天", "始终" };
+//Lights OFF
+const std::vector<std::string> VEH_LIGHTSOFF_CAPTIONS{ "Never", "Daytime Only", "Always" };
 int lightsOffIndex = 0;
 
-//要记住的车辆数量
-const std::vector<std::string> VEH_VEHREMEMBER_CAPTIONS{ "3", "5", "7", "10", "15", "20", "30", "40", "50", "手动模式" };
+//Number Of Vehicles To Remember
+const std::vector<std::string> VEH_VEHREMEMBER_CAPTIONS{ "3", "5", "7", "10", "15", "20", "30", "40", "50", "Manually" };
 const int VEH_VEHREMEMBER_VALUES[] = { 3, 5, 7, 10, 15, 20, 30, 40, 50, 666 };
 int VehRememberIndex = 3;
 
-//标记点大小
+//Blip Size
 int VehBlipSizeIndex = 2;
 
-//标记点颜色
+//Blip Colour
 int VehBlipColourIndex = 4;
 int VehColourIndex = 0;
 
-//标记点随机颜色
+//Blip Random Colour
 int VehRandomColourIndex = 0;
 
-//标记点符号
+//Blip Symbol
 int VehBlipSymbolIndexN = 0;
 
-//标记点闪烁
+//Blip Flashing
 int VehBlipFlashIndex = 0;
 
-//游戏重启时恢复追踪的车辆
+//Restore Tracked Vehicles On Game Restart
 int VehTrackedAutoSaveIndex = 0;
 
-//悬浮
+//Levitation
 int LevitationIndex = 0;
 
-//保持引擎运行
-const std::vector<std::string> VEH_ENGINERUNNING_CAPTIONS{ "关闭", "开启", "长按 F 键/熄火下车" };
+//Keep The Engine Running
+const std::vector<std::string> VEH_ENGINERUNNING_CAPTIONS{ "Never", "Always", "Hold Exit To Kill Engine" };
 int EngineRunningIndex = 0;
 
-//无限火箭助推
-const std::vector<std::string> VEH_INFINITEBOOST_CAPTIONS{ "关", "长按无限", "始终无限" };
+//Infinite Rocket Boost
+const std::vector<std::string> VEH_INFINITEBOOST_CAPTIONS{ "OFF", "Hold", "Always" };
 int InfiniteBoostIndex = 0;
 
-//自动关闭引擎（在...之后）
-const std::vector<std::string> VEH_AUTO_SHUT_ENGINE_CAPTIONS{ "禁用", "3", "5", "7", "10", "15", "20", "25", "30", "60" };
-const int VEH_AUTO_SHUT_ENGINE_VALUES[] = { 0, 3, 5, 7, 10, 15, 20, 25, 30, 60 };
+//Auto-shut engine after
+const std::vector<std::string> VEH_AUTO_SHUT_ENGINE_CAPTIONS{ "OFF", "5", "10", "20", "30" };
+const int VEH_AUTO_SHUT_ENGINE_VALUES[] = { 0, 5, 10, 20, 30 };
 int AutoShutEngineIndex = 0;
 
-//液压系统
-const std::vector<std::string> VEH_HYDRAULICS_CAPTIONS{ "关", "-0.20", "-0.10", "0.10", "0.20" };
+// Hydraulics
+const std::vector<std::string> VEH_HYDRAULICS_CAPTIONS{ "OFF", "-0.20", "-0.10", "0.10", "0.20" };
 const float VEH_HYDRAULICS_VALUES[] = { 0.0f, -0.20f, -0.10f, 0.10f, 0.20f };
 int HydraulicsIndex = 0;
 
-//氮气加速
+// Nitrous
 int NitrousIndex = 0;
 
-//偷车相关变量
+// car thief vars
 bool featureRoutineOfRinger = false;
 bool featureRoutineAnimations = true;
 std::vector<Vehicle> VEHICLES_AVAILABLE;
@@ -799,12 +337,12 @@ float tmp_denominator = 1;
 float tmp_i_denominator = 1;
 Vehicle veh_rnd = -1;
 
-//偷车贼
-const std::vector<std::string> VEH_RINGER_SKILL_CAPTIONS{ "街头盗贼", "专业盗贼" };
+// Car Thief
+const std::vector<std::string> VEH_RINGER_SKILL_CAPTIONS{ "Street Kid", "Professional" };
 int RingerSkillIndex = 1;
 
-const std::vector<std::string> VEH_RINGER_SECONDS_BREAK_CAPTIONS{ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "15", "20", "25", "30", "40", "50", "60", "70", "80", "90", "100" };
-const int VEH_RINGER_SECONDS_BREAK_VALUES[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100 };
+const std::vector<std::string> VEH_RINGER_SECONDS_BREAK_CAPTIONS{ "1", "3", "5", "10", "15", "20", "25", "30", "40", "50", "60", "70", "80", "90", "100" };
+const int VEH_RINGER_SECONDS_BREAK_VALUES[] = { 1, 3, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100 };
 int RingerBreakSecMaxIndex = 3;
 int RingerBreakSecMinIndex = 3;
 int RingerHotwireSecMaxIndex = 2;
@@ -814,7 +352,7 @@ int RingerDragOutIndex = 2;
 int RingerPedAlertnessIndex = 3;
 int RingerCallCopSecIndex = 3;
 
-//玩家在车辆中的状态...初始假设为true，因为我们的快速保存可能已经让我们处于车辆中，在这种情况下我们无法检查是否刚刚进入车辆
+// player in vehicle state... assume true initially since our quicksave might have us in a vehicle already, in which case we can't check if we just got into one
 bool oldVehicleState = true;
 
 int NPCVehicleDamageOnCollIndex = 0;
@@ -822,7 +360,7 @@ int NPCVehicleDamageOnCollIndex = 0;
 std::vector<int> C_ENGINE_M;
 std::vector<Vehicle> C_ENGINE_VEHICLE;
 
-//车门选项列表 + 结构体
+//Door Options list + struct
 struct struct_door_options{
 	std::string text;
 	bool *pState;
@@ -842,9 +380,6 @@ int doorOptionsMenuIndex, vehSeatIndexMenuIndex = 0;
 
 int savedVehicleListSortMethod = 0;
 bool vehSaveSortMenuInterrupt = false;
-
-typedef __int64(*GetModelInfo_t)(unsigned int modelHash, int* index);
-GetModelInfo_t GetModelInfo = (GetModelInfo_t)FindPatternJACCO("\x0F\xB7\x05\x00\x00\x00\x00\x45\x33\xC9\x4C\x8B\xDA\x66\x85\xC0\x0F\x84\x00\x00\x00\x00\x44\x0F\xB7\xC0\x33\xD2\x8B\xC1\x41\xF7\xF0\x48\x8B\x05\x00\x00\x00\x00\x4C\x8B\x14\xD0\xEB\x09\x41\x3B\x0A\x74\x54", "xxx????xxxxxxxxxxx????xxxxxxxxxxxxxx????xxxxxxxxxxx");
 
 std::vector<Hash> g_vehHashes;
 std::vector<Hash> g_vehHashes_SUPER;
@@ -875,7 +410,7 @@ std::vector<Hash> g_vehHashes_BOAT;
 std::vector<Hash> g_vehHashes_OPENWHEEL;
 std::vector<Hash> g_vehHashes_OTHER;
 
-//“主”分类列表。这些将用于创建车辆生成选项
+//The "master" category list. These will be used to create the vehicle spawn options
 std::vector<std::vector<Hash>*> vHashLists
 {
 	{ &g_vehHashes },
@@ -904,7 +439,7 @@ std::vector<std::vector<Hash>*> vHashLists
 	{ &g_vehHashes_OTHER }
 };
 
-//待办：用此替换现有的车辆类型向量系统！键 - 车辆类别 -> 值（类别名称，该类别的哈希向量）
+//TODO: replace existing vehicle type vector system with this! Key - vehicle category -> Value (category name, hash vector of that category)
 std::map<int, std::pair<std::string, std::vector<Hash>>> veh_category;
 
 std::string lastCustomVehicleSpawn;
@@ -921,23 +456,26 @@ Vector3 RotationToDirection2(Vector3* rot)
 	return dir;
 }
 
-void GenerateVehicleModelList()
+void GenerateVehicleModelListLegacy()
 {
 	unsigned short modelHashEntries;
 	int modelNum1;
 	UINT64 modelHashTable, modelNum2, modelNum3,modelNum4;
 
 	uintptr_t address = FindPatternJACCO("\x66\x81\xF9\x00\x00\x74\x10\x4D\x85\xC0", "xxx??xxxxx");
+	//address = 00007FF678678045
 	if (address)
 	{
 		address = address - 0x21;
 		UINT64 baseFuncAddr = address + *reinterpret_cast<int*>(address) + 0x4;
+		//baseFuncAddr = 0x7FF678678024 + 0x0092D624 + 0x4 = 0x7FF678FA564C
+		
 		int classOffset = *reinterpret_cast<int*>(address + 0x31);
 		modelHashEntries = *reinterpret_cast<UINT16*>(baseFuncAddr + *reinterpret_cast<int*>(baseFuncAddr + 3) + 7);
-		modelNum1 = *reinterpret_cast<int*>(*reinterpret_cast<int*>(baseFuncAddr + 0x52) + baseFuncAddr + 0x56); //比较
-		modelNum2 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x63) + baseFuncAddr + 0x67); //移动
-		modelNum3 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x7A) + baseFuncAddr + 0x7E); //乘法
-		modelNum4 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x81) + baseFuncAddr + 0x85); //加法
+		modelNum1 = *reinterpret_cast<int*>(*reinterpret_cast<int*>(baseFuncAddr + 0x52) + baseFuncAddr + 0x56); //cmp
+		modelNum2 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x63) + baseFuncAddr + 0x67); //mov
+		modelNum3 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x7A) + baseFuncAddr + 0x7E); //mul
+		modelNum4 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x81) + baseFuncAddr + 0x85); //add
 
 		modelHashTable = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x24) + baseFuncAddr + 0x28);
 		HashNode** HashMap = reinterpret_cast<HashNode**>(modelHashTable);
@@ -947,7 +485,7 @@ void GenerateVehicleModelList()
 		for (auto& vec : hashes)
 			vec.clear();
 
-		//开始遍历池并获取车辆
+		//Begin going through the pool and getting the vehicles
 		for (int i = 0; i < modelHashEntries; i++)
 		{
 			for (HashNode* cur = HashMap[i]; cur; cur = cur->next)
@@ -973,9 +511,86 @@ void GenerateVehicleModelList()
 	}
 }
 
+void GenerateVehicleModelList()
+{
+	unsigned short modelHashEntries;
+	int modelNum1;
+	UINT64 modelHashTable, modelNum2, modelNum3, modelNum4;
+
+	// Search for function in Enhanced. Same as FunctionID::GetModelInfo
+	uintptr_t address = FindPatternJACCO("\x44\x0F\xB7\x00\x00\x00\x00\x00\x45\x85\x00\x74\x00\x49\x89\x00\x4C\x8B\x1D\x00\x00\x00\x00\x45\x31\x00", "xxx?????xx?x?xx?xxx????xx?");
+	//address = 0x7FF70077E450
+	if (!address) {
+		// Try Legacy
+		GenerateVehicleModelListLegacy();
+		return;
+	}
+	UINT64 baseFuncAddr = address;
+	//baseFuncAddr = 0x7FF70077E450
+	write_text_to_log_file((std::ostringstream() << "baseFuncAddr 0x" << std::hex << std::uppercase << baseFuncAddr).str());
+
+	int classOffset = 0x548; //Can't locate it in GTA 5 Enhanced. Seems to be the same as Legacy
+	write_text_to_log_file((std::ostringstream() << "classOffset 0x" << std::hex << std::uppercase << classOffset).str());
+
+	modelHashEntries = *reinterpret_cast<UINT16*>(baseFuncAddr + *reinterpret_cast<int*>(baseFuncAddr + 4) + 8);
+	//modelHashEntries = 0x7FF70077E450 + 0x0350DF20 + 8 = 0x7FF703C8C378 = 0xFFF1 = 65521
+	write_text_to_log_file("modelHashEntries: " + (int)modelHashEntries);
+
+	modelNum1 = *reinterpret_cast<int*>(*reinterpret_cast<int*>(baseFuncAddr + 0x4F) + baseFuncAddr + 0x53); //cmp
+	//modelNum1 = 0x0350DE75 + 0x7FF70077E450 + 0x53 = 0x7FF703C8C318 = 0xFFF1
+	write_text_to_log_file((std::ostringstream() << "modelNum1 0x" << std::hex << std::uppercase << modelNum1).str());
+
+	modelNum2 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x58) + baseFuncAddr + 0x5C); //mov
+	//modelNum2 = 0x0350DE94 + 0x7FF70077E450 + 0x5C = 0x7FF703C8C340 = 0x0239094E8050
+	write_text_to_log_file((std::ostringstream() << "modelNum2 0x" << std::hex << std::uppercase << modelNum2).str());
+
+	modelNum3 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x7D) + baseFuncAddr + 0x81); //mul
+	//modelNum3 = 0x0350DE57 + 0x7FF70077E450 + 0x81 = 0x7FF703C8C328 = 0x8
+	write_text_to_log_file((std::ostringstream() << "modelNum3 0x" << std::hex << std::uppercase << modelNum3).str());
+
+	modelNum4 = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x6E) + baseFuncAddr + 0x72); //mov
+	//modelNum4 = 0x0350DE4E + 0x7FF70077E450 + 0x72 = 0x7FF703C8C310 = 0x023A27EB0040
+	write_text_to_log_file((std::ostringstream() << "modelNum4 0x" << std::hex << std::uppercase << modelNum4).str());
+
+	modelHashTable = *reinterpret_cast<PUINT64>(*reinterpret_cast<int*>(baseFuncAddr + 0x13) + baseFuncAddr + 0x17);
+	//modelHashTable = 0x0350DF09 + 0x7FF70077E450 + 0x17 = 0x7FF703C8C370
+	write_text_to_log_file((std::ostringstream() << "modelHashTable 0x" << std::hex << std::uppercase << modelHashTable).str());
+
+	HashNode** HashMap = reinterpret_cast<HashNode**>(modelHashTable);
+
+	auto& hashes = vehicleModels;
+
+	for (auto& vec : hashes)
+		vec.clear();
+
+	//Begin going through the pool and getting the vehicles
+	for (int i = 0; i < modelHashEntries; i++)
+	{
+		for (HashNode* cur = HashMap[i]; cur; cur = cur->next)
+		{
+			UINT16 data = cur->data;
+			if ((int)data < modelNum1 && bittest(*reinterpret_cast<int*>(modelNum2 + (4 * data >> 5)), data & 0x1F))
+			{
+				UINT64 addr1 = modelNum4 + modelNum3 * data;
+				if (addr1)
+				{
+					UINT64 addr2 = *reinterpret_cast<PUINT64>(addr1);
+					if (addr2)
+					{
+						if ((*reinterpret_cast<PBYTE>(addr2 + 157) & 0x1F) == 5)
+						{
+							hashes[*reinterpret_cast<PBYTE>(addr2 + classOffset) & 0x1F].push_back((unsigned int)cur->hash);
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void PopulateVehicleModelsArray()
 {
-	write_text_to_log_file("清空车辆模型数组");
+	write_text_to_log_file("Emptying model arrays");
 
 	g_vehHashes.clear();
 	g_vehHashes_SUPER.clear();
@@ -1009,7 +624,7 @@ void PopulateVehicleModelsArray()
 	GenerateVehicleModelList();
 	auto& hashes = vehicleModels;
 
-	write_text_to_log_file("创建车辆模型数组");
+	write_text_to_log_file("Creating vehicle model arrays");
 	std::unordered_map<VehicleClass, std::vector<Hash>*> vDestMap
 	{
 		{ VehicleClass::Super, &g_vehHashes_SUPER },{ VehicleClass::Sport, &g_vehHashes_SPORT },{ VehicleClass::SportsClassic, &g_vehHashes_SPORTSCLASSIC },
@@ -1025,14 +640,14 @@ void PopulateVehicleModelsArray()
 
 	//std::array<unsigned int, 5> placeholderVehicles = { -1491268273, 1549009676, 1133471123, 386089410, 956849991 };
 	
-	// 遍历巨大的模型哈希列表，并将它们分类到各自的类别中。
+	//Go through the giant list of model hashes and sort them into their respective categories
 	for (int d = 0x0; d < 0x20; d++)
 	{
 		for (auto& dd : hashes[d])
 		{
 			if (std::find(g_vehHashes.begin(), g_vehHashes.end(), Hash(dd)) == g_vehHashes.end())
 			{
-				// 由于不完整，生成时会导致游戏崩溃的车辆。
+				//Vehicles which crash the game when spawned due to being in-complete.
 				if (dd == -1491268273 || dd == 1549009676 || dd == 1133471123 || dd == 386089410 || dd == 956849991 || dd == -1491268273 || dd == 1549009676 || dd == 1133471123 || dd == 386089410 || dd == 956849991)
 					continue;
 
@@ -1045,28 +660,36 @@ void PopulateVehicleModelsArray()
 		}
 	}
 	
-	// 遍历哈希列表并对其进行排序。
+	//Go through the hash lists and sort them
 	for (auto& hlist : vHashLists)
 	{
 		std::sort(hlist->begin(), hlist->end(), [](const Hash& a, const Hash& b) -> bool { return (get_vehicle_make_and_model(a)) < get_vehicle_make_and_model(b); });
 	}
 
-	//std::stringstream ss;
-	//ss << "vHashLists size: " << vHashLists.size() << " g_vehHashes size: " << g_vehHashes.size() << " g_vehHashes_SUPER size: " << g_vehHashes_SUPER.size() << " g_vehHashes_SPORT size: " << g_vehHashes_SPORT.size() << " g_vehHashes_SPORTSCLASSIC size: " << g_vehHashes_SPORTSCLASSIC.size() << "g_vehHashes_COUPE size: " << g_vehHashes_COUPE.size() << " g_vehHashes_MUSCLE size: " << g_vehHashes_MUSCLE.size() << " g_vehHashes_OFFROAD size: " << g_vehHashes_OFFROAD.size() << " g_vehHashes_SUV size: " << g_vehHashes_SUV.size() << " g_vehHashes_SEDAN size: " << g_vehHashes_SEDAN.size() << " g_vehHashes_COMPACT size: " << g_vehHashes_COMPACT.size() << " g_vehHashes_PICKUP size: " << g_vehHashes_PICKUP.size() << " g_vehHashes_VAN size: " << g_vehHashes_VAN.size() << " g_vehHashes_TRUCK size: " << g_vehHashes_TRUCK.size() << " g_vehHashes_INDUSTRIAL size: " << g_vehHashes_INDUSTRIAL.size() << " g_vehHashes_MILITARY size: " << g_vehHashes_MILITARY.size() << " g_vehHashes_COMMERCIAL size: " << g_vehHashes_COMMERCIAL.size() << " g_vehHashes_UTIITY size: " << g_vehHashes_UTILITY.size() << " g_vehHashes_SERVICE size: " << g_vehHashes_SERVICE.size() << " g_vehHashes_TRAILER size: " << g_vehHashes_TRAILER.size() << " g_vehHashes_TRAIN size: " << g_vehHashes_TRAIN.size() << " g_vehHashes_EMERGENCY size: " << g_vehHashes_EMERGENCY.size() << " g_vehHashes_MOTORCYCLE size: " << g_vehHashes_MOTORCYCLE.size() << " g_vehHashes_BICYCLE size: " << g_vehHashes_BICYCLE.size() << " g_vehHashes_PLANE size: " << g_vehHashes_PLANE.size() << " g_vehHashes_HELICOPTER size: " << g_vehHashes_HELICOPTER.size() << " g_vehHashes_BOAT size: " << g_vehHashes_BOAT.size() << " g_vehHashes_OPENWHEEL size: " << g_vehHashes_OPENWHEEL.size() << " g_vehHashes_OTHER size: " << g_vehHashes_OTHER.size() << std::endl;
-	//write_text_to_log_file(ss.str());
+	std::stringstream ss;
+	ss << "vHashLists size: " << vHashLists.size() << " g_vehHashes size: " << g_vehHashes.size() << " g_vehHashes_SUPER size: " << g_vehHashes_SUPER.size() << " g_vehHashes_SPORT size: " << g_vehHashes_SPORT.size() << " g_vehHashes_SPORTSCLASSIC size: " << g_vehHashes_SPORTSCLASSIC.size() << "g_vehHashes_COUPE size: " << g_vehHashes_COUPE.size() << " g_vehHashes_MUSCLE size: " << g_vehHashes_MUSCLE.size() << " g_vehHashes_OFFROAD size: " << g_vehHashes_OFFROAD.size() << " g_vehHashes_SUV size: " << g_vehHashes_SUV.size() << " g_vehHashes_SEDAN size: " << g_vehHashes_SEDAN.size() << " g_vehHashes_COMPACT size: " << g_vehHashes_COMPACT.size() << " g_vehHashes_PICKUP size: " << g_vehHashes_PICKUP.size() << " g_vehHashes_VAN size: " << g_vehHashes_VAN.size() << " g_vehHashes_TRUCK size: " << g_vehHashes_TRUCK.size() << " g_vehHashes_INDUSTRIAL size: " << g_vehHashes_INDUSTRIAL.size() << " g_vehHashes_MILITARY size: " << g_vehHashes_MILITARY.size() << " g_vehHashes_COMMERCIAL size: " << g_vehHashes_COMMERCIAL.size() << " g_vehHashes_UTIITY size: " << g_vehHashes_UTILITY.size() << " g_vehHashes_SERVICE size: " << g_vehHashes_SERVICE.size() << " g_vehHashes_TRAILER size: " << g_vehHashes_TRAILER.size() << " g_vehHashes_TRAIN size: " << g_vehHashes_TRAIN.size() << " g_vehHashes_EMERGENCY size: " << g_vehHashes_EMERGENCY.size() << " g_vehHashes_MOTORCYCLE size: " << g_vehHashes_MOTORCYCLE.size() << " g_vehHashes_BICYCLE size: " << g_vehHashes_BICYCLE.size() << " g_vehHashes_PLANE size: " << g_vehHashes_PLANE.size() << " g_vehHashes_HELICOPTER size: " << g_vehHashes_HELICOPTER.size() << " g_vehHashes_BOAT size: " << g_vehHashes_BOAT.size() << " g_vehHashes_OPENWHEEL size: " << g_vehHashes_OPENWHEEL.size() << " g_vehHashes_OTHER size: " << g_vehHashes_OTHER.size() << std::endl;
+	write_text_to_log_file(ss.str());
 }
 
 char* GetVehicleModelName(int modelHash)
 {
 	int index = 0xFFFF;
-	uint64_t modelInfo = GetModelInfo(modelHash, &index);
+	auto pGetModelInfo = ResolveFunction<FunctionID::GetModelInfo>();
+	if (!pGetModelInfo) {
+		return nullptr;
+	}
+	uint64_t modelInfo = pGetModelInfo(modelHash, &index);
 	return (char*)(modelInfo + 0x298);
 }
 
 char* GetVehicleMakeName(int modelHash)
 {
 	int index = 0xFFFF;
-	uint64_t modelInfo = GetModelInfo(modelHash, &index);
+	auto pGetModelInfo = ResolveFunction<FunctionID::GetModelInfo>();
+	if (!pGetModelInfo) {
+		return nullptr;
+	}
+	uint64_t modelInfo = pGetModelInfo(modelHash, &index);
 	return (char*)(modelInfo + 0x2A4);
 }
 
@@ -1133,35 +756,36 @@ std::vector<Hash> get_vehicles_from_category(int category)
 
 std::string get_vehicle_make_and_model(int modelHash)
 {
-	// 原始模型标签（兜底）
-	const char* modelNameC = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(modelHash);
-	std::string modelNameStr = modelNameC ? modelNameC : "";
+	std::stringstream ss;
 
-	// 1) 先查外置 XML
-	for (const auto& cat : g_CustomVehicleCategories) {
-		auto it = g_CustomVehicles.find(cat);
-		if (it == g_CustomVehicles.end()) continue;
-		for (const auto& entry : it->second) {
-			if (GAMEPLAY::GET_HASH_KEY((char*)entry.first.c_str()) == modelHash && !entry.second.empty()) {
-				return entry.second; // XML 命名优先
-			}
-		}
+	std::string model;
+	char* vehicle_model_name = GetVehicleModelName(modelHash);
+	if (vehicle_model_name) {
+		model = std::string(UI::_GET_LABEL_TEXT(vehicle_model_name));
+	}
+	else {
+		model = std::string("Unknown");
 	}
 
-	// 2) 再查游戏内置 make / model
-	std::string make  = std::string(UI::_GET_LABEL_TEXT(GetVehicleMakeName(modelHash)));
-	std::string model = std::string(UI::_GET_LABEL_TEXT(GetVehicleModelName(modelHash)));
+	std::string make;
+	char* vehicle_make_name = GetVehicleMakeName(modelHash);
+	if (vehicle_make_name) {
+		make = std::string(UI::_GET_LABEL_TEXT(vehicle_make_name));
+	}
+	else {
+		make = std::string("Unknown");
+	}
+	
+	//write_text_to_log_file("[DEBUG] Combined name: " + make + " " + model);
 
-	auto is_valid = [](const std::string& s){
-		return !s.empty() && s != "NULL";
-		};
-
-	if (is_valid(make) && is_valid(model)) return make + " " + model;
-	if (is_valid(model))                 return model;
-	if (is_valid(make))                  return make;
-
-	// 3) 兜底：返回模型标签
-	return modelNameStr;
+	if (make == "NULL")
+		return model;
+	else
+	{
+		ss << make << " " << model;
+		return ss.str();
+	}
+	return model;
 }
 
 void process_window_roll() {
@@ -1230,8 +854,8 @@ void vehicle_set_alarm() {
 
 void doorslocked_switching() {
 	featureLockVehicleDoors = !featureLockVehicleDoors;
-	if (featureLockVehicleDoors) set_status_text("车门已锁定！");
-	else set_status_text("车门已解锁！");
+	if (featureLockVehicleDoors) set_status_text("Doors Locked");
+	else set_status_text("Doors Unlocked");
 	WAIT(100);
 }
 
@@ -1271,8 +895,8 @@ void damage_door() {
 	}
 	std::string::size_type sz;
 	keyboard_on_screen_already = true;
-	curr_message = "输入一个数字: [0=右前门; 1=左前门; 2=右后门; 3=左后门; 4=引擎盖; 5=后备箱]";  //损坏车门
-	std::string result_damage = show_keyboard("手动输入名称", NULL);
+	curr_message = "Enter a number: 0 = f_r door; 1 = f_l door; 2 = b_r door; 3 = b_l door; 4 = hood; 5 = trunk";  // damage door
+	std::string result_damage = show_keyboard("Enter Name Manually", NULL);
 	if (!result_damage.empty()) {
 		int dec_result = std::stoi(result_damage, &sz);
 		VEHICLE::SET_VEHICLE_DOOR_BROKEN(veh_damage, dec_result, false);
@@ -1296,10 +920,10 @@ void police_light() {
 void toggle_tractioncontrol() {
 	featureTractionControl = !featureTractionControl;
 	if (featureTractionControl) {
-		set_status_text("牵引力控制已启用！");
+		set_status_text("Traction Control Enabled");
 	}
 	else {
-		set_status_text("牵引力控制已关闭！");
+		set_status_text("Traction Control Disabled");
 	}
 }
 
@@ -1327,8 +951,8 @@ void vehicle_anchor() {
 	if (VEHICLE::IS_THIS_MODEL_A_BOAT(ENTITY::GET_ENTITY_MODEL(veh_anchor)) || ENTITY::GET_ENTITY_MODEL(veh_anchor) == GAMEPLAY::GET_HASH_KEY("SUBMERSIBLE") || ENTITY::GET_ENTITY_MODEL(veh_anchor) == GAMEPLAY::GET_HASH_KEY("SUBMERSIBLE2") ||
 		ENTITY::GET_ENTITY_MODEL(veh_anchor) == GAMEPLAY::GET_HASH_KEY("DODO")) {
 		anchor_dropped = !anchor_dropped;
-		if (anchor_dropped) set_status_text("抛锚停船，准备休息！");
-		else set_status_text("收起船锚，准备启航！");
+		if (anchor_dropped) set_status_text("Anchor dropped");
+		else set_status_text("Anchor raised");
 	}
 	WAIT(100);
 }
@@ -1371,7 +995,7 @@ Ped find_nearest_ped() {
 	return temp_ped;
 }
 
-void eject_seat() { //弹射座椅
+void eject_seat() { // eject seat
 	Vehicle veh_eject = -1;
 	Ped PedToEject = -1;
 	Hash currVehModel = -1;
@@ -1494,7 +1118,7 @@ void save_tracked_veh() {
 			sprintf(str, "%d", i);
 			database->save_tracked_vehicle(VEHICLES_REMEMBER[i], str, i);
 		}
-		set_status_text("成功保存已跟踪的车辆！");
+		set_status_text("Tracked vehicles saved");
 		restored_v = true;
 	}
 }
@@ -1519,7 +1143,7 @@ bool onconfirm_vehdoor_menu(MenuItem<int> choice){
 
 			int value = choice.value;
 
-			float doorAngle = VEHICLE::GET_VEHICLE_DOOR_ANGLE_RATIO(veh, value); //我能想到的检测部件是否动画化的最佳方法
+			float doorAngle = VEHICLE::GET_VEHICLE_DOOR_ANGLE_RATIO(veh, value); //Best way I could figure out to detect if the part is animated.
 			if(doorAngle < 0.01){
 				VEHICLE::SET_VEHICLE_DOOR_OPEN(veh, value, false, featureVehicleDoorInstant);
 			}
@@ -1528,14 +1152,14 @@ bool onconfirm_vehdoor_menu(MenuItem<int> choice){
 			}
 		}
 		//else{
-		//	set_status_text("玩家未处于车辆内！");
+		//	set_status_text("Player isn't in a vehicle");
 		//}
 	}
-	else if (choice.value == -5)//驾驶员车窗升降
+	else if (choice.value == -5)//driver window roll
 	{
 		process_window_roll(); 
 	}
-	else if (choice.value == -6)//所有车窗降下
+	else if (choice.value == -6)//all windows down
 	{
 		Vehicle veh_roll = -1;
 		if (PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 1)) veh_roll = PED::GET_VEHICLE_PED_IS_USING(playerPed);
@@ -1546,55 +1170,55 @@ bool onconfirm_vehdoor_menu(MenuItem<int> choice){
 
 		VEHICLE::ROLL_DOWN_WINDOWS(veh_roll);
 	}
-	else if (choice.value == -7)//车内灯开/关
+	else if (choice.value == -7)//interior light on/off
 	{
 		interior_light();
 	}
-	else if (choice.value == -8)//探照灯开/关
+	else if (choice.value == -8)//search light on/off
 	{
 		search_light();
 	}
-	else if (choice.value == -9)//警灯开/关
+	else if (choice.value == -9)//police lights on/off
 	{
 		police_light();
 	}
-	else if (choice.value == -10)//引擎开/关
+	else if (choice.value == -10)//engine on/off 
 	{
 		engineonoff_switching(); 
 	}
-	else if (choice.value == -11)//损坏引擎
+	else if (choice.value == -11)//damage the engine
 	{
 		engine_damage(); 
 	}
-	else if (choice.value == -12)//关闭引擎
+	else if (choice.value == -12)//kill the engine
 	{
 		engine_kill(); 
 	}
-	else if (choice.value == -13)//车辆警报
+	else if (choice.value == -13)//vehicle alarm
 	{
 		vehicle_alarm();
 	}
-	else if (choice.value == -14)//设置车辆警报
+	else if (choice.value == -14)//vehicle set alarm
 	{
 		vehicle_set_alarm();
 	}
-	else if (choice.value == -15)//车辆刹车
+	else if (choice.value == -15)//vehicle brake
 	{
 		vehicle_brake();
 	}
-	else if (choice.value == -16)//车辆烧胎
+	else if (choice.value == -16)//vehicle burnout
 	{
 		vehicle_burnout();
 	}
-	else if (choice.value == -17)//损坏车门
+	else if (choice.value == -17)//damage door 
 	{
 		damage_door();
 	}
-	else if (choice.value == -18)//弹射座椅
+	else if (choice.value == -18)//eject seat
 	{
 		eject_seat();
 	}
-	else if (choice.value == -19)//拆卸挡风玻璃
+	else if (choice.value == -19)//detach windscreen
 	{
 		Vehicle veh_detach = -1;
 		if (PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 1)) veh_detach = PED::GET_VEHICLE_PED_IS_USING(playerPed);
@@ -1604,11 +1228,11 @@ bool onconfirm_vehdoor_menu(MenuItem<int> choice){
 		}
 		VEHICLE::_DETACH_VEHICLE_WINDSCREEN(veh_detach);
 	}
-	else if (choice.value == -20)//进入受损车辆
+	else if (choice.value == -20)//enter damaged vehicle
 	{
 	enter_damaged_vehicle();
 	}
-	else if (choice.value == -21)//抛锚
+	else if (choice.value == -21)//drop anchor
 	{
 	vehicle_anchor();
 	}
@@ -1616,24 +1240,24 @@ bool onconfirm_vehdoor_menu(MenuItem<int> choice){
 }
 
 bool process_veh_door_menu(){
-	const std::string caption = "车辆控制选项";
+	const std::string caption = "Vehicle Control Options";
 
 	Vehicle veh = PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID());
 
 	std::vector<MenuItem<int>*> menuItems;
 	
 	const std::vector<std::string> DOOR_NAMES = {
-		"左 前门",
-		"右 前门",
-		"左 后门",
-		"右 后门",
-		"引擎盖",
-		"后备箱",
-		"后备箱 2"
+		"Front Left Door",
+		"Front Right Door",
+		"Rear Left Door",
+		"Rear Right Door",
+		"Hood",
+		"Trunk ",
+		"Trunk 2"
 	};
 
 	ToggleMenuItem<int>* toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用 快速开门/关门";
+	toggleItem->caption = "Toggle Open Door Instantly";
 	toggleItem->toggleValue = &featureVehicleDoorInstant;
 	menuItems.push_back(toggleItem);
 
@@ -1647,7 +1271,7 @@ bool process_veh_door_menu(){
 
 	if(VEHICLE::IS_VEHICLE_A_CONVERTIBLE(veh, false)){
 		FunctionDrivenToggleMenuItem<int>* toggleItem = new FunctionDrivenToggleMenuItem<int>();
-		toggleItem->caption = "敞篷车顶  折叠/打开";
+		toggleItem->caption = "Convertible Roof Down?";
 		toggleItem->getter_call = is_convertible_roofdown;
 		toggleItem->setter_call = set_convertible_roofdown;
 		toggleItem->value = -1;
@@ -1655,7 +1279,7 @@ bool process_veh_door_menu(){
 	}
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "锁定车门  解/锁";
+	toggleItem->caption = "Lock Vehicle Doors";
 	toggleItem->value = -4;
 	toggleItem->toggleValue = &featureLockVehicleDoors;
 	menuItems.push_back(toggleItem);
@@ -1666,103 +1290,103 @@ bool process_veh_door_menu(){
 	int i = 0;
 
 	item = new MenuItem<int>();
-	item->caption = "主驾驶车窗  升/降";
+	item->caption = "Driver Window Roll Up/Down";
 	item->value = -5;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "所有车窗都降下";
+	item->caption = "All Windows Down";
 	item->value = -6;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "车内灯光  开/关";
+	item->caption = "Interior Light On/Off";
 	item->value = -7;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "探照灯  开/关";
+	item->caption = "Search Light On/Off";
 	item->value = -8;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "警车警灯  开/关";
+	item->caption = "Police Lights On/Off";
 	item->value = -9;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "引擎  启动/停止";
+	item->caption = "Engine Start/Stop";
 	item->value = -10;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "摧毁发动机";
+	item->caption = "Damage The Engine";
 	item->value = -11;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "损坏发动机";
+	item->caption = "Kill The Engine";
 	item->value = -12;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "设置警报  开/关";
+	item->caption = "Set Alarm On/Off";
 	item->value = -13;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "车辆警报  开/关";
+	item->caption = "Toggle Vehicle Alarm";
 	item->value = -14;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "手刹  开/关";
+	item->caption = "Handbrake On/Off";
 	item->value = -15;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "烧胎  开/关";
+	item->caption = "Burnout On/Off";
 	item->value = -16;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "损坏车门 (0-5)";
+	item->caption = "Damage Door (0-5)";
 	item->value = -17;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "弹射驾驶员";
+	item->caption = "Eject Driver Seat";
 	item->value = -18;
 	item->isLeaf = true;
 	menuItems.push_back(item); 
 
 	item = new MenuItem<int>();
-	item->caption = "拆除前挡风玻璃";
+	item->caption = "Detach Windscreen";
 	item->value = -19;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "进入损毁的车辆";
+	item->caption = "Enter Damaged Vehicle";
 	item->value = -20;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "抛船锚/收船锚";
+	item->caption = "Drop Anchor";
 	item->value = -21;
 	item->isLeaf = true;
 	menuItems.push_back(item);
@@ -1786,7 +1410,7 @@ void seat_change_hotkey()
 		PED::SET_PED_INTO_VEHICLE(playerPed, veh, currseat);
 	}
 	else {
-		set_status_text("玩家不在车辆中！");
+		set_status_text("Player isn't in a vehicle");
 	}
 }
 
@@ -1815,13 +1439,13 @@ bool process_veh_seat_menu()
 		int maxSeats = VEHICLE::GET_VEHICLE_MODEL_NUMBER_OF_SEATS(currVehModel);
 
 		std::vector<std::string> SEAT_NAMES = {
-			"主驾驶 座位",
-			"副驾驶 座位"			
+			"Driver",
+			"Front Passenger"			
 		};
 
 		for (int i = 0; i < maxSeats; i++) 
 		{
-			SEAT_NAMES.push_back("后排 座位 " + std::to_string(i + 1));
+			SEAT_NAMES.push_back("Rear Passenger " + std::to_string(i + 1));
 
 			MenuItem<int> *item = new MenuItem<int>();
 			item->value = i - 1;
@@ -1831,10 +1455,10 @@ bool process_veh_seat_menu()
 	}
 	else 
 	{
-		set_status_text("玩家不在载具中！");
+		set_status_text("Player not in vehicle");
 	}
 
-	return draw_generic_menu<int>(menuItems, &vehSeatIndexMenuIndex, "车辆座位选项", onconfirm_seat_menu, NULL, NULL);
+	return draw_generic_menu<int>(menuItems, &vehSeatIndexMenuIndex, "Seat Options", onconfirm_seat_menu, NULL, NULL);
 }
 
 bool onconfirm_colours_menu(MenuItem<int> choice)
@@ -1853,7 +1477,7 @@ bool onconfirm_speed_menu(MenuItem<int> choice)
 }
 
 void process_speed_menu(){
-	const std::string caption = "速度/高度 显示";
+	const std::string caption = "Speed And Altitude Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 
@@ -1863,44 +1487,44 @@ void process_speed_menu(){
 	int i = 0;
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "单位: KM/H";
+	toggleItem->caption = "KM/H";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureKMH;
 	menuItems.push_back(toggleItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "显示: 高度";
+	toggleItem->caption = "Altitude";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureAltitude;
 	menuItems.push_back(toggleItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "步行";
+	toggleItem->caption = "On Foot";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureSpeedOnFoot;
 	menuItems.push_back(toggleItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "所有地面载具";
+	toggleItem->caption = "Any Non Flying Vehicle";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureSpeedOnGround;
 	menuItems.push_back(toggleItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "所有飞行载具";
+	toggleItem->caption = "Plane / Heli";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureSpeedInAir;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_BLIPSIZE_CAPTIONS, onchange_speed_size_index);
 	listItem->wrap = false;
-	listItem->caption = "字体大小";
+	listItem->caption = "Size:";
 	listItem->value = SpeedSizeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(SPEED_POSITION_CAPTIONS, onchange_speed_position_index);
 	listItem->wrap = false;
-	listItem->caption = "显示位置";
+	listItem->caption = "Position:";
 	listItem->value = SpeedPositionIndexN;
 	menuItems.push_back(listItem);
 
@@ -1913,7 +1537,7 @@ bool onconfirm_visualize_menu(MenuItem<int> choice)
 }
 
 void process_visualize_menu() {
-	const std::string caption = "车辆转向灯";
+	const std::string caption = "Vehicle Indicators Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -1923,48 +1547,48 @@ void process_visualize_menu() {
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_CAPTIONS, onchange_veh_turn_signals_index);
 	listItem->wrap = false;
-	listItem->caption = "启用转向灯";
+	listItem->caption = "Enable Indicators";
 	listItem->value = turnSignalsIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ANGLE_CAPTIONS, onchange_veh_turn_signals_angle_index);
 	listItem->wrap = false;
-	listItem->caption = "当转向角度为...打开转向灯";
+	listItem->caption = "Turn Indicators On If Turn Angle Is";
 	listItem->value = turnSignalsAngleIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ACCELERATION_CAPTIONS, onchange_veh_turn_signals_acceleration_index);
 	listItem->wrap = false;
-	listItem->caption = "在加速几秒后关闭转向灯";
+	listItem->caption = "Turn Indicators Off If Accelerated For (sec)";
 	listItem->value = turnSignalsAccelerationIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "受损时启用危险警示灯 (双闪)";
+	toggleItem->caption = "Enable Hazard Lights On Damage";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureHazards;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_VISLIGHT_CAPTIONS, onchange_veh_vislight_index);
 	listItem->wrap = false;
-	listItem->caption = "显示 2D 图标";
+	listItem->caption = "2D Sprite";
 	listItem->value = VisLightIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_VISLIGHT_CAPTIONS, onchange_veh_vislight3d_index);
 	listItem->wrap = false;
-	listItem->caption = "显示 3D 图标";
+	listItem->caption = "3D Vector";
 	listItem->value = VisLight3dIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "仅限第三人称视角";
+	toggleItem->caption = "Third Person View Only";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &feature3rdpersonviewonly;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "仅限白天";
+	toggleItem->caption = "Daytime Only";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDaytimeonly;
 	menuItems.push_back(toggleItem);
@@ -1978,7 +1602,7 @@ bool onconfirm_speedlimit_menu(MenuItem<int> choice)
 }
 
 void process_speedlimit_menu() {
-	const std::string caption = "车辆限速选项";
+	const std::string caption = "Speed Limit Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -1986,19 +1610,19 @@ void process_speedlimit_menu() {
 
 	listItem = new SelectFromListMenuItem(VEH_SPEEDLIMITER_CAPTIONS, onchange_veh_speedlimiter_index);
 	listItem->wrap = false;
-	listItem->caption = "通用-速度限制";
+	listItem->caption = "Common Speed Limit";
 	listItem->value = speedLimiterIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_SPEEDLIMITER_CAPTIONS, onchange_veh_cityspeedlimiter_index);
 	listItem->wrap = false;
-	listItem->caption = "城市-速度限制";
+	listItem->caption = "City Auto Speed Limit";
 	listItem->value = speedCityLimiterIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_SPEEDLIMITER_CAPTIONS, onchange_veh_countryspeedlimiter_index);
 	listItem->wrap = false;
-	listItem->caption = "乡村-速度限制";
+	listItem->caption = "Country Auto Speed Limit";
 	listItem->value = speedCountryLimiterIndex;
 	menuItems.push_back(listItem);
 
@@ -2011,7 +1635,7 @@ bool onconfirm_fuel_colour_menu(MenuItem<int> choice)
 }
 
 bool process_fuel_colour_menu(){
-	const std::string caption = "RGB 颜色设置";
+	const std::string caption = "RGB Settings";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -2020,23 +1644,23 @@ bool process_fuel_colour_menu(){
 
 	listItem = new SelectFromListMenuItem(FUEL_COLOURS_R_CAPTIONS, onchange_fuel_colours_r_index);
 	listItem->wrap = false;
-	listItem->caption = "红 ( R )";
+	listItem->caption = "R:";
 	listItem->value = FuelColours_R_IndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(FUEL_COLOURS_R_CAPTIONS, onchange_fuel_colours_g_index);
 	listItem->wrap = false;
-	listItem->caption = "绿 ( G )";
+	listItem->caption = "G:";
 	listItem->value = FuelColours_G_IndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(FUEL_COLOURS_R_CAPTIONS, onchange_fuel_colours_b_index);
 	listItem->wrap = false;
-	listItem->caption = "蓝 ( B )";
+	listItem->caption = "B:";
 	listItem->value = FuelColours_B_IndexN;
 	menuItems.push_back(listItem);
 
-	return draw_generic_menu<int>(menuItems, 0, "燃油条颜色", onconfirm_fuel_colour_menu, NULL, NULL);
+	return draw_generic_menu<int>(menuItems, 0, "Fuel Bar Colour", onconfirm_fuel_colour_menu, NULL, NULL);
 }
 
 bool onconfirm_enginedegrade_menu(MenuItem<int> choice)
@@ -2045,7 +1669,7 @@ bool onconfirm_enginedegrade_menu(MenuItem<int> choice)
 }
 
 void process_engine_degrade_menu() {
-	const std::string caption = "引擎损坏选项";
+	const std::string caption = "Engine Damage Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -2054,86 +1678,86 @@ void process_engine_degrade_menu() {
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enable";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureEngineDegrade;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "显示健康条";
+	toggleItem->caption = "Show Health Bar";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureEngineHealthBar;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "故障模式";
+	toggleItem->caption = "Limp Mode";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureLimpMode;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEHEALTH_CAPTIONS, onchange_car_enginehealth_index);
 	listItem->wrap = false;
-	listItem->caption = "汽车引擎健康值（最小 %)";
+	listItem->caption = "Car Engine Health (Min %)";
 	listItem->value = CarEngineHealthIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEHEALTH_CAPTIONS, onchange_bike_enginehealth_index);
 	listItem->wrap = false;
-	listItem->caption = "摩托车引擎健康值（最小 %)";
+	listItem->caption = "Bike Engine Health (Min %)";
 	listItem->value = BikeEngineHealthIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEHEALTH_CAPTIONS, onchange_boat_enginehealth_index);
 	listItem->wrap = false;
-	listItem->caption = "船只引擎健康值（最小 %)";
+	listItem->caption = "Boat Engine Health (Min %)";
 	listItem->value = BoatEngineHealthIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEHEALTH_CAPTIONS, onchange_plane_enginehealth_index);
 	listItem->wrap = false;
-	listItem->caption = "飞机引擎健康值（最小 %)";
+	listItem->caption = "Plane Engine Health (Min %)";
 	listItem->value = PlaneEngineHealthIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEHEALTH_CAPTIONS, onchange_heli_enginehealth_index);
 	listItem->wrap = false;
-	listItem->caption = "直升机引擎健康值（最小 %)";
+	listItem->caption = "Heli Engine Health (Min %)";
 	listItem->value = HeliEngineHealthIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEDEGRADE_CAPTIONS, onchange_car_enginedegrade_index);
 	listItem->wrap = false;
-	listItem->caption = "汽车引擎损坏速度 (每英里 %)";
+	listItem->caption = "Car Engine Damage Speed (% Per Mile)";
 	listItem->value = CarEngineDegradeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEDEGRADE_CAPTIONS, onchange_bike_enginedegrade_index);
 	listItem->wrap = false;
-	listItem->caption = "摩托车引擎损坏速度 (每英里 %)";
+	listItem->caption = "Bike Engine Damage Speed (% Per Mile)";
 	listItem->value = BikeEngineDegradeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEDEGRADE_CAPTIONS, onchange_boat_enginedegrade_index);
 	listItem->wrap = false;
-	listItem->caption = "船只引擎损坏速度 (每英里 %)";
+	listItem->caption = "Boat Engine Damage Speed (% Per Mile)";
 	listItem->value = BoatEngineDegradeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEDEGRADE_CAPTIONS, onchange_plane_enginedegrade_index);
 	listItem->wrap = false;
-	listItem->caption = "飞机引擎损坏速度 (每英里 %)";
+	listItem->caption = "Plane Engine Damage Speed (% Per Mile)";
 	listItem->value = PlaneEngineDegradeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEDEGRADE_CAPTIONS, onchange_heli_enginedegrade_index);
 	listItem->wrap = false;
-	listItem->caption = "直升机引擎损坏速度 (每英里 %)";
+	listItem->caption = "Heli Engine Damage Speed (% Per Mile)";
 	listItem->value = HeliEngineDegradeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINEHEALTH_CAPTIONS, onchange_restoration_speed_index);
 	listItem->wrap = false;
-	listItem->caption = "引擎恢复速度 (每分钟 %)";
+	listItem->caption = "Engine Recovery Speed (% Per Minute)";
 	listItem->value = RestorationSpeedIndexN;
 	menuItems.push_back(listItem);
 
@@ -2146,7 +1770,7 @@ bool onconfirm_routineofringer_menu(MenuItem<int> choice)
 }
 
 void process_routine_of_ringer_menu() {
-	const std::string caption = "盗窃车辆选项";
+	const std::string caption = "Car Thief Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem* listItem;
@@ -2155,91 +1779,91 @@ void process_routine_of_ringer_menu() {
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enable";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRoutineOfRinger;
 	menuItems.push_back(toggleItem);
 	
 	listItem = new SelectFromListMenuItem(VEH_RINGER_SKILL_CAPTIONS, onchange_skill_index);
 	listItem->wrap = false;
-	listItem->caption = "盗贼技能";
+	listItem->caption = "Thief Skills";
 	listItem->value = RingerSkillIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_RINGER_SECONDS_BREAK_CAPTIONS, onchange_breaking_into_index);
 	listItem->wrap = false;
-	listItem->caption = "最长开锁闯入时间 (秒)";
+	listItem->caption = "Break In Timer Max (sec)";
 	listItem->value = RingerBreakSecMaxIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_RINGER_SECONDS_BREAK_CAPTIONS, onchange_breaking_into_min_index);
 	listItem->wrap = false;
-	listItem->caption = "最短开锁闯入时间 (秒)";
+	listItem->caption = "Break In Timer Min (sec)";
 	listItem->value = RingerBreakSecMinIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_RINGER_SECONDS_BREAK_CAPTIONS, onchange_hotwire_index);
 	listItem->wrap = false;
-	listItem->caption = "最长搭线启动时间 (秒)";
+	listItem->caption = "Hotwire Duration Max (sec)";
 	listItem->value = RingerHotwireSecMaxIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_RINGER_SECONDS_BREAK_CAPTIONS, onchange_hotwire_min_index);
 	listItem->wrap = false;
-	listItem->caption = "最短搭线启动时间 (秒)";
+	listItem->caption = "Hotwire Duration Min (sec)";
 	listItem->value = RingerHotwireSecMinIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_RINGER_SECONDS_BREAK_CAPTIONS, onchange_ped_alertness_index);
 	listItem->wrap = false;
-	listItem->caption = "被行人怀疑距离 (米)";
+	listItem->caption = "Ped Suspicion Distance (m)";
 	listItem->value = RingerPedAlertnessIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "显示被发现/警觉的行人";
+	toggleItem->caption = "Show Alerted NPCs";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureShowPedCons;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_RINGER_SECONDS_BREAK_CAPTIONS, onchange_call_cop_index);
 	listItem->wrap = false;
-	listItem->caption = "犯罪被行人报警延迟 (秒)";
+	listItem->caption = "Crime Reporting Delay (sec)";
 	listItem->value = RingerCallCopSecIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_STARSPUNISH_CAPTIONS, onchange_breaking_attempt_index);
 	listItem->wrap = false;
-	listItem->caption = "警方对车辆被开锁的通缉星";
+	listItem->caption = "Police Response To Break In";
 	listItem->value = RingerBreakAttemptIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_STARSPUNISH_CAPTIONS, onchange_drag_out_index);
 	listItem->wrap = false;
-	listItem->caption = "警方对GTA偷车行为的通缉星";
+	listItem->caption = "Police Response For GTA";
 	listItem->value = RingerDragOutIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用动画";
+	toggleItem->caption = "Enable Animations";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRoutineAnimations;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "显示进度条";
+	toggleItem->caption = "Show Progress Bar";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRoutineBars;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "锁定车门";
+	toggleItem->caption = "Doors Locked";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDoorLocked;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "搭线/短接 点火";
+	toggleItem->caption = "Hot Wire";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureIgnition;
 	menuItems.push_back(toggleItem);
@@ -2257,7 +1881,7 @@ bool onconfirm_fuel_menu(MenuItem<int> choice)
 	return false;
 }
 
-void DrawSprite(char * Streamedtexture, char * textureName, float x, float y, float width, float height, float rotation, int r, int g, int b, int a) // 这是用于“可视化指标”功能
+void DrawSprite(char * Streamedtexture, char * textureName, float x, float y, float width, float height, float rotation, int r, int g, int b, int a) // This is fo the 'Visualize Indicators' feature
 {
 	GRAPHICS::REQUEST_STREAMED_TEXTURE_DICT(Streamedtexture, false);
 	GRAPHICS::HAS_STREAMED_TEXTURE_DICT_LOADED(Streamedtexture);
@@ -2265,7 +1889,7 @@ void DrawSprite(char * Streamedtexture, char * textureName, float x, float y, fl
 }
 
 void process_fuel_menu(){
-	const std::string caption = "燃油消耗选项";
+	const std::string caption = "Fuel Consumption Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	MenuItem<int> *item;
@@ -2275,115 +1899,115 @@ void process_fuel_menu(){
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enabled";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureFuel;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_FUELBLIPS_CAPTIONS, onchange_fuel_blips_index);
 	listItem->wrap = false;
-	listItem->caption = "显示加油图标";
+	listItem->caption = "Blips";
 	listItem->value = FuelBlipsIndex;
 	menuItems.push_back(listItem);
 	
 	listItem = new SelectFromListMenuItem(VEH_CARFUEL_CAPTIONS, onchange_idle_consumption_index);
 	listItem->wrap = false;
-	listItem->caption = "怠速的油耗";
+	listItem->caption = "Idle Consumption";
 	listItem->value = IdleConsumptionIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_CARFUEL_CAPTIONS, onchange_car_consumption_index);
 	listItem->wrap = false;
-	listItem->caption = "汽车的油耗";
+	listItem->caption = "Car Fuel Consumption";
 	listItem->value = CarConsumptionIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_CARFUEL_CAPTIONS, onchange_bike_consumption_index);
 	listItem->wrap = false;
-	listItem->caption = "摩托车的油耗";
+	listItem->caption = "Bike Fuel Consumption";
 	listItem->value = BikeConsumptionIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_CARFUEL_CAPTIONS, onchange_boat_consumption_index);
 	listItem->wrap = false;
-	listItem->caption = "船只的油耗";
+	listItem->caption = "Boat Fuel Consumption";
 	listItem->value = BoatConsumptionIndex;
 	menuItems.push_back(listItem);
 	
 	listItem = new SelectFromListMenuItem(VEH_CARFUEL_CAPTIONS, onchange_plane_consumption_index);
 	listItem->wrap = false;
-	listItem->caption = "飞机的油耗";
+	listItem->caption = "Plane Fuel Consumption";
 	listItem->value = PlaneConsumptionIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_CARFUEL_CAPTIONS, onchange_heli_consumption_index);
 	listItem->wrap = false;
-	listItem->caption = "直升机的油耗";
+	listItem->caption = "Heli Fuel Consumption";
 	listItem->value = HeliConsumptionIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_REFUELSPEED_CAPTIONS, onchange_refuelspeed_index);
 	listItem->wrap = false;
-	listItem->caption = "加油的速度";
+	listItem->caption = "Refueling Speed";
 	listItem->value = RefuelingSpeedIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_FUELPRICE_CAPTIONS, onchange_fuelprice_index);
 	listItem->wrap = false;
-	listItem->caption = "加油站 燃油价";
+	listItem->caption = "Gas Station Fuel Price";
 	listItem->value = FuelPriceIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_FUELPRICE_CAPTIONS, onchange_canprice_index);
 	listItem->wrap = false;
-	listItem->caption = "加油桶 燃油价";
+	listItem->caption = "Jerry Can Fuel Price";
 	listItem->value = JerrycanPriceIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ANGLE_CAPTIONS, onchange_random1_index);
 	listItem->wrap = false;
-	listItem->caption = "随机车辆最低燃油 (%)";
+	listItem->caption = "Random Vehicle Fuel Min (%)";
 	listItem->value = Random1Index;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ANGLE_CAPTIONS, onchange_random2_index);
 	listItem->wrap = false;
-	listItem->caption = "随机车辆最高燃油 (%)";
+	listItem->caption = "Random Vehicle Fuel Max (%)";
 	listItem->value = Random2Index;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_FUELBARPOSITION_CAPTIONS, onchange_barposition_index);
 	listItem->wrap = false;
-	listItem->caption = "燃油条位置";
+	listItem->caption = "Fuel Bar Position";
 	listItem->value = BarPositionIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(FUEL_COLOURS_R_CAPTIONS, onchange_fuel_background_opacity_index);
 	listItem->wrap = false;
-	listItem->caption = "燃油条背景透明度";
+	listItem->caption = "Fuel Bar Background Opacity";
 	listItem->value = FuelBackground_Opacity_IndexN;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "燃油条颜色";
+	item->caption = "Fuel Bar Colour";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "显示燃油条";
+	toggleItem->caption = "Fuel Gauge";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureFuelGauge;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "第一人称模式隐藏燃油条";
+	toggleItem->caption = "Hide Fuel Bar In First Person Mode";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureHideFuelBar;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用点火动画";
+	toggleItem->caption = "Show Ignition Animation";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureShowIgnAnim;
 	menuItems.push_back(toggleItem);
@@ -2400,8 +2024,8 @@ void blip_delete_generic_settings(std::vector<StringPairSettingDBRow>* results)
 
 void del_sel_blip() {
 	keyboard_on_screen_already = true;
-	curr_message = "输入跟踪车的标记编号"; // 删除被追踪的车辆
-	std::string result = show_keyboard("手动输入名称", (char*)blipDelete.c_str());
+	curr_message = "Enter the number of a blip:"; // delete a tracked vehicle
+	std::string result = show_keyboard("Enter Name Manually", (char*)blipDelete.c_str());
 	if (!result.empty()) {
 		result = trim(result);
 		blipDelete = result;
@@ -2424,7 +2048,7 @@ void del_sel_blip() {
 			}
 			if (featureRestoreTracked) save_tracked_veh();
 		}
-		else set_status_text("无效的编号!  ");
+		else set_status_text("Not a valid number");
 	}
 }
 
@@ -2432,8 +2056,8 @@ bool onconfirm_vehicle_remember_menu(MenuItem<int> choice)
 {
 	switch (activeLineIndexRemember){
 	case 2:
-		if (!PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 0)) set_status_text("~r~错误: 玩家不在车辆内！");
-		if (VEH_VEHREMEMBER_VALUES[VehRememberIndex] != 666) set_status_text("~r~警告: ~s~请先将 (跟踪车辆的数量) 选项, 设置为手动！");
+		if (!PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 0)) set_status_text("~r~Error: ~w~ Player not in vehicle");
+		if (VEH_VEHREMEMBER_VALUES[VehRememberIndex] != 666) set_status_text("Set the 'Number Of Vehicles To Track' option to 'Manually'");
 		if (PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 0) && VEH_VEHREMEMBER_VALUES[VehRememberIndex] == 666) manual_veh_tr = true;
 		break;
 	case 8:
@@ -2449,7 +2073,7 @@ bool onconfirm_vehicle_remember_menu(MenuItem<int> choice)
 }
 
 void process_remember_vehicles_menu() {
-	const std::string caption = "车辆跟踪选项";
+	const std::string caption = "Vehicle Tracking Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	MenuItem<int> *item;
@@ -2459,79 +2083,79 @@ void process_remember_vehicles_menu() {
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enabled";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRememberVehicles;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_VEHREMEMBER_CAPTIONS, onchange_veh_remember_index);
 	listItem->wrap = false;
-	listItem->caption = "跟踪车辆的数量";
+	listItem->caption = "Number Of Vehicles To Track";
 	listItem->value = VehRememberIndex;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "跟踪车辆";
+	item->caption = "Track Vehicle";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(VEH_BLIPSIZE_CAPTIONS, onchange_veh_blipsize_index);
 	listItem->wrap = false;
-	listItem->caption = "标记大小";
+	listItem->caption = "Blip Size";
 	listItem->value = VehBlipSizeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_BLIPCOLOUR_CAPTIONS, onchange_veh_blipcolour_index);
 	listItem->wrap = false;
-	listItem->caption = "标记颜色";
+	listItem->caption = "Blip Colour";
 	listItem->value = VehBlipColourIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_BLIPSYMBOL_CAPTIONS, onchange_veh_blipsymbol_index);
 	listItem->wrap = false;
-	listItem->caption = "标记样式";
+	listItem->caption = "Blip Symbol";
 	listItem->value = VehBlipSymbolIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(LIMP_IF_INJURED_CAPTIONS, onchange_veh_blipflash_index);
 	listItem->wrap = false;
-	listItem->caption = "标记闪烁";
+	listItem->caption = "Blip Flashing";
 	listItem->value = VehBlipFlashIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "显示标记编号";
+	toggleItem->caption = "Show Blip Number";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureBlipNumber;
 	menuItems.push_back(toggleItem);
 
 	item = new MenuItem<int>();
-	item->caption = "按编号删除标记";
+	item->caption = "Delete Blip By Number";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "接近或离开时车辆警报 开/关";
+	toggleItem->caption = "Toggle Vehicle Alarm Automatically";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureAutoalarm;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "游戏重启时恢复已跟踪的车辆";
+	toggleItem->caption = "Restore Tracked Vehicles On Game Restart";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRestoreTracked;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(MISC_PHONE_FREESECONDS_CAPTIONS, onchange_veh_trackedautosave_index);
 	listItem->wrap = false;
-	listItem->caption = "自动保存已跟踪车辆 (分钟)";
+	listItem->caption = "Autosave Tracked Vehicles (min)";
 	listItem->value = VehTrackedAutoSaveIndex;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "保存已跟踪的车辆";
+	item->caption = "Save Tracked Vehicles";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
@@ -2545,7 +2169,7 @@ bool onconfirm_road_laws_menu(MenuItem<int> choice)
 }
 
 void process_road_laws_menu(){
-	const std::string caption = "交通法规选项";
+	const std::string caption = "Road Laws Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	SelectFromListMenuItem *listItem;
@@ -2554,127 +2178,127 @@ void process_road_laws_menu(){
 	int i = 0;
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "启用";
+	toggleItem->caption = "Enabled";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRoadLaws;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_DETECTIONRANGE_CAPTIONS, onchange_detection_range_index);
 	listItem->wrap = false;
-	listItem->caption = "检测范围";
+	listItem->caption = "Detection Range";
 	listItem->value = DetectionRangeIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_PIRSUITRANGE_CAPTIONS, onchange_pirsuit_range_index);
 	listItem->wrap = false;
-	listItem->caption = "追捕范围";
+	listItem->caption = "Pursuit Range";
 	listItem->value = PirsuitRangeIndexN;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_STARSPUNISH_CAPTIONS, onchange_stars_punish_index);
 	listItem->wrap = false;
-	listItem->caption = "逃避逮捕时通缉等级";
+	listItem->caption = "Wanted Level For Evading Arrest";
 	listItem->value = StarsPunishIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(MISC_PHONE_BILL_CAPTIONS, onchange_fine_size_index);
 	listItem->wrap = false;
-	listItem->caption = "罚款金额";
+	listItem->caption = "Fine Amount";
 	listItem->value = FineSizeIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警车永远不会翻车";
+	toggleItem->caption = "Cop Vehicles Never Flip";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePoliceNoFlip;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警车不受伤害 (无敌)";
+	toggleItem->caption = "Cop Vehicles Don't Take Damage";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePoliceNoDamage;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警察车辆标记";
+	toggleItem->caption = "Cop Vehicle Blip";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePoliceVehicleBlip;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "警察使用无线电 (高难)";
+	toggleItem->caption = "Cops Use Radio (Hardcore Mode)";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureCopsUseRadio;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_SPEEDINGCITY_CAPTIONS, onchange_speeding_city_index);
 	listItem->wrap = false;
-	listItem->caption = "在市区超速";
+	listItem->caption = "Speeding In City";
 	listItem->value = SpeedingCityIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_SPEEDINGCITY_CAPTIONS, onchange_speeding_speedway_index);
 	listItem->wrap = false;
-	listItem->caption = "在高速公路超速";
+	listItem->caption = "Speeding On Freeway";
 	listItem->value = SpeedingSpeedwayIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "闯红灯";
+	toggleItem->caption = "Running Red Light";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRunningRedLight;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "在人行道驾驶";
+	toggleItem->caption = "Pavement Driving";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featurePavementDriving;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "逆向行驶";
+	toggleItem->caption = "Driving Against Traffic";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDrivingAgainstTraffic;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "车辆发生碰撞 (车祸)";
+	toggleItem->caption = "Vehicle Collision";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureCarCollision;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "驾驶时使用手机";
+	toggleItem->caption = "Using Phone While Driving";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureUsingMobilePhone;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "车辆严重损坏/损毁";
+	toggleItem->caption = "Vehicle Heavily Damaged";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureVehicleHeavilyDamaged;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "驾驶时未佩戴头盔";
+	toggleItem->caption = "No Helmet While Driving";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureNoHelmetOnBike;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "盗窃车辆";
+	toggleItem->caption = "Stolen Vehicle";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureStolenVehicle;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "夜间不使用车灯驾驶"; 
+	toggleItem->caption = "Driving Without Headlights At Night"; 
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureNoLightsNightTime;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "逃避警察追捕";
+	toggleItem->caption = "Evading Police";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureEscapingPolice;
 	menuItems.push_back(toggleItem);
@@ -2683,7 +2307,7 @@ void process_road_laws_menu(){
 }
 
 bool onconfirm_veh_menu(MenuItem<int> choice){
-	// 通用变量
+	// common variables
 	Ped playerPed = PLAYER::PLAYER_PED_ID();
 
 	switch(activeLineIndexVeh){
@@ -2691,65 +2315,62 @@ bool onconfirm_veh_menu(MenuItem<int> choice){
 			if(process_carspawn_menu()) return false;
 			break;
 		case 1:
-			if(process_custom_carspawn_menu()) return false;
-			break;
-		case 2:
 			if(process_savedveh_menu()) return false;
 			break;
-		case 3: // 修复
+		case 2: // fix
 			fix_vehicle();
 			break;
-		case 5: // 清除
+		case 4: // clean
 			clean_vehicle();
 			break;
-		case 7: // 油漆
+		case 6: // paint
 			if(process_paint_menu()) return false;
 			break;
-		case 8: // 模组
+		case 7: // mods
 			if(process_vehmod_menu()) return false;
 			break;
-		case 21: // 速度和高度菜单
+		case 20: // speed and altitude menu
 			process_speed_menu();
 			break;
-		case 22: // 速度限制
+		case 21: // speed limit
 			process_speedlimit_menu();
 			break;
-		case 23: // 车门菜单
+		case 22: // door menu
 			if(process_veh_door_menu()) return false;
 			break;
-		case 24: // 座位菜单
+		case 23: // seat menu
 			if (PED::IS_PED_SITTING_IN_ANY_VEHICLE(playerPed))
 				if(process_veh_seat_menu()) return false;
 			break;
-		case 25: // 车辆转向灯菜单
+		case 24: // vehicle indicators menu
 			process_visualize_menu();
 			break;
-		case 28: // 燃油菜单
+		case 27: // fuel menu
 			process_fuel_menu();
 			break;
-		case 29: // 保存车辆菜单
+		case 28: // remember vehicles menu
 			process_remember_vehicles_menu();
 			break;
-		case 30: // 交通法规菜单
+		case 29: // road laws menu
 			process_road_laws_menu();
 			break;
-		case 31: // 引擎可能会损耗
+		case 30: // engine can degrade
 			process_engine_degrade_menu();
 			break;
-		case 48: // 飞机炸弹
+		case 47: // plane bombs
 		{
 			if (!PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
-				set_status_text("~r~玩家不在载具中！");
-				//返回 true;
+				set_status_text("Player not in vehicle");
+				//return true;
 			}
 			Hash currVehModel = ENTITY::GET_ENTITY_MODEL(PED::GET_VEHICLE_PED_IS_USING(playerPed));
 			if (GAMEPLAY::GET_HASH_KEY("CUBAN800") == currVehModel) {
 				if (process_veh_weapons_menu()) return false;
 			}
-			else set_status_text("~r~错误: 开启弹仓投弹, 需要古邦800飞机！");
+			else set_status_text("~r~Error: ~w~ Bomb doors require Cuban 800");
 		}
 			break;
-		case 52: // 车辆盗窃
+		case 51: // car thief
 			process_routine_of_ringer_menu();
 			break;
 		default:
@@ -2759,7 +2380,7 @@ bool onconfirm_veh_menu(MenuItem<int> choice){
 }
 
 void process_veh_menu(){
-	const std::string caption = "车辆选项";
+	const std::string caption = "Vehicle Options";
 
 	std::vector<MenuItem<int>*> menuItems;
 	MenuItem<int> *item;
@@ -2774,323 +2395,316 @@ void process_veh_menu(){
 		WAIT(0);
 	}
 
-    item = new MenuItem<int>();
-    item->caption = "生成车辆";
-    item->value = i++;
-    item->isLeaf = false;
-    menuItems.push_back(item);
-
-    // 插入“生成新增车辆”项（外置 XML）
-    item = new MenuItem<int>();
-    item->caption = "生成新增车辆";
-    item->value = i++;
-    item->isLeaf = false;
-    menuItems.push_back(item);
-
 	item = new MenuItem<int>();
-	item->caption = "保存的车辆";
+	item->caption = "Vehicle Spawner";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "修复车辆";
+	item->caption = "Saved Vehicles";
+	item->value = i++;
+	item->isLeaf = false;
+	menuItems.push_back(item);
+
+	item = new MenuItem<int>();
+	item->caption = "Fix";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(VEH_INVINC_MODE_CAPTIONS, onchange_veh_invincibility_mode);
 	listItem->wrap = false;
-	listItem->caption = "车辆无敌状态";
+	listItem->caption = "Vehicle Invincibility";
 	listItem->value = VehInvincibilityIndex;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "清洁车辆";
+	item->caption = "Clean";
 	item->value = i++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(WORLD_REDUCEDGRIP_SNOWING_CAPTIONS, onchange_veh_never_dirty);
 	listItem->wrap = false;
-	listItem->caption = "车辆始终保持干净";
+	listItem->caption = "Vehicle Never Gets Dirty";
 	listItem->value = featureNeverDirty;
 	menuItems.push_back(listItem);
 	
 	item = new MenuItem<int>();
-	item->caption = "车漆/颜色";
+	item->caption = "Paint";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "车辆改装";
+	item->caption = "Modifications";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "安全带 开/关";
+	toggleItem->caption = "No Falling Off/Out";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureNoVehFallOff;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "禁止佩戴头盔";
+	toggleItem->caption = "Don't Wear Helmet";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureWearHelmetOff;
 	toggleItem->toggleValueUpdated = &featureWearHelmetOffUpdated;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "生成并进入车辆";
+	toggleItem->caption = "Spawn Into Vehicle";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureVehSpawnInto;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "生成最佳性能改装车辆";
+	toggleItem->caption = "Spawn Vehicles Fully Tuned";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureVehSpawnTuned; 
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "生成最佳外观改装车辆";
+	toggleItem->caption = "Spawn Vehicles Fully Pimped";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureVehSpawnOptic;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "禁止 DLC 车辆消失";
+	toggleItem->caption = "Disable Despawn Of DLC Vehicles";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDespawnScriptDisabled;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_MASS_CAPTIONS, onchange_veh_mass_index);
 	listItem->wrap = false;
-	listItem->caption = "车辆能量护盾";
+	listItem->caption = "Vehicle Force Shield";
 	listItem->value = VehMassMultIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_SPEED_BOOST_CAPTIONS, onchange_veh_speed_boost_index);
 	listItem->wrap = false;
-	listItem->caption = "车辆加速度";
+	listItem->caption = "Speed Boost";
 	listItem->value = speedBoostIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_ENG_POW_CAPTIONS, onchange_veh_eng_pow_index);
 	listItem->wrap = false;
-	listItem->caption = "引擎功率倍增器";
+	listItem->caption = "Engine Power Multiplier";
 	listItem->value = engPowMultIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_INFINITEBOOST_CAPTIONS, onchange_veh_infiniteboost_index);
 	listItem->wrap = false;
-	listItem->caption = "无限火箭助推";
+	listItem->caption = "Infinite Rocket Boost";
 	listItem->value = InfiniteBoostIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(LIMP_IF_INJURED_CAPTIONS, onchange_veh_nitrous_index);
 	listItem->wrap = false;
-	listItem->caption = "氮气加速";
+	listItem->caption = "Nitrous";
 	listItem->value = NitrousIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ANGLE_CAPTIONS, onchange_veh_nitrous_power_index);
 	listItem->wrap = false;
-	listItem->caption = "氮气功率";
+	listItem->caption = "Nitrous Power";
 	listItem->value = NitrousPowerIndex;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "速度/高度 显示";
+	item->caption = "Speed / Altitude";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "车辆限速";
+	item->caption = "Speed Limiter";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "车辆控制";
+	item->caption = "Vehicle Control";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 	
 	item = new MenuItem<int>();
-	item->caption = "车辆座位";
+	item->caption = "Vehicle Seats";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "车辆转向灯";
+	item->caption = "Vehicle Indicators";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	listItem = new SelectFromListMenuItem(VEH_ENGINERUNNING_CAPTIONS, onchange_veh_enginerunning_index);
 	listItem->wrap = false;
-	listItem->caption = "保持引擎运转";
+	listItem->caption = "Keep Engine Running";
 	listItem->value = EngineRunningIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_AUTO_SHUT_ENGINE_CAPTIONS, onchange_veh_autoshutengine_index);
 	listItem->wrap = false;
-	listItem->caption = "几秒后关闭引擎";
+	listItem->caption = "Shut Engine After (s)";
 	listItem->value = AutoShutEngineIndex;
 	menuItems.push_back(listItem);
 
 	item = new MenuItem<int>();
-	item->caption = "燃油消耗";
+	item->caption = "Fuel Consumption";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 	
 	item = new MenuItem<int>();
-	item->caption = "车辆跟踪";
+	item->caption = "Vehicle Tracking";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "交通法规";
+	item->caption = "Road Laws";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "引擎损坏";
+	item->caption = "Engine Damage";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "真实的碰撞";
+	toggleItem->caption = "Realistic Crashes";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureNoVehFlip;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_LIGHTSOFF_CAPTIONS, onchange_veh_lightsOff_index);
 	listItem->wrap = false;
-	listItem->caption = "默认关闭车辆灯光";
+	listItem->caption = "Vehicle Lights Off By Default";
 	listItem->value = lightsOffIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "夜间不自动开启大灯";
+	toggleItem->caption = "No Headlights In The Evening";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureAutoToggleLights;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "强制开启车辆灯光";
+	toggleItem->caption = "Force Vehicle Lights On";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureVehLightsOn;
 	toggleItem->toggleValueUpdated = &featureVehLightsOnUpdated;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "开启摩托艇探照灯";
+	toggleItem->caption = "Seashark Spotlight";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureSeasharkLights;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "记住车轮转向角度";
+	toggleItem->caption = "Remember Wheel Angle";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureVehSteerAngle;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "显示当前里程";
+	toggleItem->caption = "Show Current Mileage";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureMileage;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "射击时降下主驾驶车窗";
+	toggleItem->caption = "Roll Driver Window Down When Shooting";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureRollWhenShoot;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "牵引力控制";
+	toggleItem->caption = "Traction Control";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureTractionControl;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ACCELERATION_CAPTIONS, onchange_veh_jumpy_index);
 	listItem->wrap = false;
-	listItem->caption = "车辆跳跃";
+	listItem->caption = "Vehicle Jump";
 	listItem->value = JumpyVehIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_HYDRAULICS_CAPTIONS, onchange_veh_hydraulics_index);
 	listItem->wrap = false;
-	listItem->caption = "悬挂高度";
+	listItem->caption = "Suspension Height";
 	listItem->value = HydraulicsIndex;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "永远不会翻车";
+	toggleItem->caption = "Stick Vehicle To Ground";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureSticktoground;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(VEH_TURN_SIGNALS_ACCELERATION_CAPTIONS, onchange_heavy_veh_index);
 	listItem->wrap = false;
-	listItem->caption = "超级碰撞";
+	listItem->caption = "Heavy Vehicle";
 	listItem->value = HeavyVehIndex;
 	menuItems.push_back(listItem);
 
 	listItem = new SelectFromListMenuItem(VEH_SPEEDLIMITER_CAPTIONS, onchange_door_autolock_index);
 	listItem->wrap = false;
-	listItem->caption = "到达指定速度锁定车门";
+	listItem->caption = "Autolock Driver Door At";
 	listItem->value = DoorAutolockIndex;
 	menuItems.push_back(listItem);
 	
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "投放路钉";
+	toggleItem->caption = "Drop Road Spikes";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDropSpikes;
 	menuItems.push_back(toggleItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "炸弹空袭";
+	toggleItem->caption = "Airstrike";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureAirStrike;
 	menuItems.push_back(toggleItem);
 
 	item = new MenuItem<int>();
-	item->caption = "飞机投弹";
+	item->caption = "Drop Bombs";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "刹车时禁用倒车";
+	toggleItem->caption = "Disable Reverse When Braking";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureReverseWhenBraking;
 	menuItems.push_back(toggleItem);
 
 	listItem = new SelectFromListMenuItem(FUEL_COLOURS_R_CAPTIONS, onchange_veh_invisibility_index);
 	listItem->wrap = false;
-	listItem->caption = "车辆隐形";
+	listItem->caption = "Vehicle Invisibility";
 	listItem->value = VehInvisIndexN;
 	menuItems.push_back(listItem);
 
 	toggleItem = new ToggleMenuItem<int>();
-	toggleItem->caption = "禁用车辆点火";
+	toggleItem->caption = "Disable Ignition";
 	toggleItem->value = i++;
 	toggleItem->toggleValue = &featureDisableIgnition;
 	menuItems.push_back(toggleItem);
 
 	item = new MenuItem<int>();
-	item->caption = "盗窃车辆";
+	item->caption = "Car Thief";
 	item->value = i++;
 	item->isLeaf = false;
 	menuItems.push_back(item);
@@ -3100,8 +2714,8 @@ void process_veh_menu(){
 
 void speedlimiter_switching(){
 	speedlimiter_switch = !speedlimiter_switch;
-	if (speedlimiter_switch) set_status_text("车辆限速 已开启！");
-	else set_status_text("车辆限速器 已关闭！");
+	if (speedlimiter_switch) set_status_text("Speed Limiter ON");
+	else set_status_text("Speed Limiter OFF");
 	WAIT(100);
 }
 
@@ -3192,23 +2806,18 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 
 		case VER_1_0_2060_0_STEAM:
 		case VER_1_0_2060_0_NOSTEAM:
-		case VER_1_0_2060_0_EGS:
 		case VER_1_0_2060_1_STEAM:
 		case VER_1_0_2060_1_NOSTEAM:
-		case VER_1_0_2060_1_EGS:
 			*getGlobalPtr(4268340) = 1;
 
 		case VER_1_0_2189_0_STEAM:
 		case VER_1_0_2189_0_NOSTEAM:
-		case VER_1_0_2189_0_EGS:
 		case VER_1_0_2245_0_STEAM:
 		case VER_1_0_2245_0_NOSTEAM: 
-		case VER_1_0_2245_0_EGS:
 			*getGlobalPtr(4269479) = 1;
 
 		case VER_1_0_2372_0_STEAM:
-		case VER_1_0_2372_0_NOSTEAM:	  
-		case VER_1_0_2372_0_EGS:		  
+		case VER_1_0_2372_0_NOSTEAM:
 			*getGlobalPtr(4270934) = 1;
 
 		//case VER_1_0_2189_0_STEAM:
@@ -3216,14 +2825,14 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		//case VER_1_0_2189_0_EGS:
 		//	*getGlobalPtr(4269479) = 1;
 
-		// 临时修复，直到 Drug Wars 更新导致的脚本变动后修复上述问题
+		//Temp fix until the above pattern is fixed due to the Drug Wars update changing the scripts around
 		default:
 			*getGlobalPtr(4540726) = 1;
 	}
 
-	// 禁用 DLC 车辆的消失
+	// Disable Despawn Of DLC Vehicles
 	if (featureDespawnScriptDisabled && featureDespawnScriptDisabledUpdated == false) {
-		set_status_text("~r~注意: 游戏内的商店将无法使用, 直到您关闭 (禁用DLC车辆消失) 选项！");
+		set_status_text("~r~Note:~r~ in-game shops will not work until you turn off the 'disable despawn' option.");
 		GAMEPLAY::TERMINATE_ALL_SCRIPTS_WITH_THIS_NAME("shop_controller");
 		featureDespawnScriptDisabledUpdated = true;
 	}
@@ -3236,9 +2845,9 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 切换车辆警报检查
+	// Toggle Vehicle Alarm Check
 	if (alarmischarged == true) { 
-		if (featureAutoalarm && !VEHICLES_REMEMBER.empty()) { // 自动切换车辆警报
+		if (featureAutoalarm && !VEHICLES_REMEMBER.empty()) { // Toggle Vehicle Alarm Automatically
 			float dist_diff = -1.0;
 			Vector3 coordsme = ENTITY::GET_ENTITY_COORDS(playerPed, true);
 			for (int i = 0; i < VEHICLES_REMEMBER.size(); i++) {
@@ -3253,7 +2862,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				}
 			}
 		}
-		if (alarm_enabled == true && alarmed_veh != -1) { // 设置警报
+		if (alarm_enabled == true && alarmed_veh != -1) { // set the alarm
 			engine_secs_passed = clock() / CLOCKS_PER_SEC;
 			if (((clock() / (CLOCKS_PER_SEC / 1000)) - engine_secs_curr) != 0) {
 				a_counter_tick = a_counter_tick + 1;
@@ -3270,7 +2879,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				if (!featureAutoalarm) alarmischarged = false;
 			}
 		}
-		if (alarmed_veh != -1 && near_enough == false && alarm_enabled == false) { // 禁用警报
+		if (alarmed_veh != -1 && near_enough == false && alarm_enabled == false) { // disable the alarm
 			a_counter_tick = a_counter_tick + 1;
 			VEHICLE::SET_VEHICLE_ENGINE_ON(alarmed_veh, true, true, false);
 			if (a_counter_tick > 71) {
@@ -3282,22 +2891,22 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			}
 		}
 		if (a_counter_tick > 5 && a_counter_tick < 70) {
-			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 1, true); // 左转向灯
-			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 0, true); // 右转向灯
+			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 1, true); // Left Signal 
+			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 0, true); // Right Signal
 			VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(alarmed_veh, true);
 			if ((a_counter_tick > 5 && a_counter_tick < 20) || (a_counter_tick > 40 && a_counter_tick < 60)) VEHICLE::SET_VEHICLE_LIGHTS(alarmed_veh, 2);
 			if (a_counter_tick == 15) AUDIO::PLAY_SOUND_FROM_ENTITY(-1, "SIREN_BLIP", alarmed_veh, "BIG_SCORE_3A_SOUNDS", 0, 0);
 			if (a_counter_tick > 20 && a_counter_tick < 40 || (a_counter_tick > 60 && a_counter_tick < 70)) VEHICLE::SET_VEHICLE_LIGHTS(alarmed_veh, 1);
 		}
 		if (a_counter_tick > 70) {
-			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 1, false); // 左转向灯
-			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 0, false); // 右转向灯
+			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 1, false); // Left Signal 
+			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(alarmed_veh, 0, false); // Right Signal
 			VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(alarmed_veh, false);
 			VEHICLE::SET_VEHICLE_LIGHTS(alarmed_veh, 0);
 		}
 	}
 
-	// 无敌车辆
+	// Invincible Vehicle
 	if (WORLD_GRAVITY_LEVEL_VALUES[VehInvincibilityIndex] > 0) {
 		if (bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 			bool featureVehNoDamage = false;
@@ -3328,7 +2937,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				ENTITY::SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(veh, 1);
 				VEHICLE::SET_VEHICLE_BODY_HEALTH(veh, 10000.0f);
 				
-				// 此 API 似乎是用于检查损坏 - 不要只是持续修复车辆，因为这会导致故障。
+				// This API seems to be a damage check - don't just continually repair the vehicle as it causes glitches.
 				if (VEHICLE::_IS_VEHICLE_DAMAGED(veh) && featureVehNoDamage && WORLD_GRAVITY_LEVEL_VALUES[VehInvincibilityIndex] == 3){
 					VEHICLE::SET_VEHICLE_FIXED(veh);
 				}
@@ -3348,7 +2957,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		featureVehInvincibleUpdated = false;
 	}
 
-	// 防止跌落
+	// No Fall Off
 	if (bPlayerExists && !featureNoVehFallOff && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		PED::SET_PED_CONFIG_FLAG(playerPed, 32, TRUE); //const int PED_FLAG_THROUGH_WINDSCREEN = 32;
 		PED::SET_PED_CAN_BE_KNOCKED_OFF_VEHICLE(playerPed, 0); // can
@@ -3362,7 +2971,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 速度提升
+	// Speed Boost
 	if (bPlayerExists && speedBoostIndex > 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)){
 		bool bUp = IsKeyDown(KeyConfig::KEY_VEH_BOOST) || (CONTROLS::IS_CONTROL_PRESSED(2, controller_binds["KEY_VEH_BOOST"].first) && CONTROLS::IS_CONTROL_PRESSED(2, controller_binds["KEY_VEH_BOOST"].second));
 		bool bDown = IsKeyDown(KeyConfig::KEY_VEH_STOP) || (CONTROLS::IS_CONTROL_PRESSED(2, controller_binds["KEY_VEH_STOP"].first) && CONTROLS::IS_CONTROL_PRESSED(2, controller_binds["KEY_VEH_STOP"].second));
@@ -3384,7 +2993,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					break;
 				default:
 					std::ostringstream ss;
-					ss << "速度提升参数: " << speedBoostIndex;
+					ss << "speed boost index: " << speedBoostIndex;
 					set_status_text_centre_screen(ss.str(), 1000UL);
 					break;
 				}
@@ -3398,21 +3007,21 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 座位快捷键
+	// Hotkey for Seats
 	if (!PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) currseat = -1;
 
-	// 禁止佩戴头盔
+	// No Helmet 
 	if (bPlayerExists){
 		if (featureWearHelmetOffUpdated || did_player_just_enter_vehicle(playerPed)){
-			PED::SET_PED_HELMET(playerPed, !featureWearHelmetOff); // 阻止玩家佩戴头盔
+			PED::SET_PED_HELMET(playerPed, !featureWearHelmetOff); // Prevents player from wearing a helmet
 			featureWearHelmetOffUpdated = false;
 		}
 	}
 
-	// 如果玩家不在载具中，将状态设置为 false
+	// player is NOT in a vehicle, set state to false
 	if (bPlayerExists && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, true)) oldVehicleState = false; 
 	
-	// 烧胎快捷键
+	// burnout hotkey
 	if (is_hotkey_held_veh_burnout() && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)){
 		VEHICLE::SET_VEHICLE_BURNOUT(veh, true);
 		burnoutApplied = true;
@@ -3422,7 +3031,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		burnoutApplied = false;
 	}
 
-	// 引擎增强功率热键
+	// engine extra power hotkey
 	if (is_hotkey_held_veh_extrapower() && bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)){
 		VEHICLE::_SET_VEHICLE_ENGINE_TORQUE_MULTIPLIER(veh, 1.8f);
 		VEHICLE::_SET_VEHICLE_ENGINE_POWER_MULTIPLIER(veh, 250.0f);
@@ -3434,14 +3043,14 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		VEHICLE::_SET_VEHICLE_ENGINE_POWER_MULTIPLIER(veh, 1.0);
 		engPowMultApplied = false;
 	}
-	// 引擎动力倍数
+	// engine power multiplier
 	if (!is_hotkey_held_veh_extrapower() && bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && VEH_ENG_POW_VALUES[engPowMultIndex] >= 0) { 
 		VEHICLE::_SET_VEHICLE_ENGINE_TORQUE_MULTIPLIER(veh, 1.0f);
 		VEHICLE::_SET_VEHICLE_ENGINE_POWER_MULTIPLIER(veh, VEH_ENG_POW_VALUES[engPowMultIndex]);
 		//powChanged = true;
 	}
 	
-	// 自定义引擎动力倍数
+	// custom engine power multiplier
 	if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		if (engCustomPowMultIndex != old_c_engine_index) {
 			if (C_ENGINE_M.empty()) {
@@ -3463,7 +3072,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			}
 			old_c_engine_index = engCustomPowMultIndex;
 		}
-		if (!C_ENGINE_M.empty()) {// 使用倍数
+		if (!C_ENGINE_M.empty()) {// apply multiplier
 			for (int kl = 0; kl < C_ENGINE_M.size(); kl++) {
 				if (C_ENGINE_VEHICLE[kl] == PED::GET_VEHICLE_PED_IS_IN(playerPed, false)) VEHICLE::_SET_VEHICLE_ENGINE_POWER_MULTIPLIER(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), C_ENGINE_M[kl]);
 			}
@@ -3474,7 +3083,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		old_c_engine_index = 0;
 	}
 
-	// 摩托艇有大灯
+	// Seashark has head lights
 	if (featureSeasharkLights) {
 		int time = TIME::GET_CLOCK_HOURS();
 		if (!PED::IS_PED_IN_ANY_BOAT(playerPed)) sheshark_light_toogle = 1;
@@ -3499,7 +3108,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	} 
 		
-	// 牵引力控制
+	// Traction Control 
 	if (featureTractionControl && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		Vector3 vehspeed = ENTITY::GET_ENTITY_VELOCITY(PED::GET_VEHICLE_PED_IS_IN(playerPed, false));
 		if (vehspeed.x < 0) vehspeed.x = (vehspeed.x * -1);
@@ -3522,7 +3131,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 车辆隐形
+	// Vehicle Invisibility
 	if (FUEL_COLOURS_R_VALUES[VehInvisIndexN] > 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		ENTITY::SET_ENTITY_ALPHA(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), FUEL_COLOURS_R_VALUES[VehInvisIndexN] - 10, 0);
 		is_invisible = true;
@@ -3532,13 +3141,13 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		is_invisible = false;
 	}
 
-	// 载具始终保持清洁
+	// Vehicle Never Gets Dirty
 	if (NPC_RAGDOLL_VALUES[featureNeverDirty] > 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		VEHICLE::SET_VEHICLE_DIRT_LEVEL(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), 0.0);
 		if (NPC_RAGDOLL_VALUES[featureNeverDirty] == 2) GRAPHICS::WASH_DECALS_FROM_VEHICLE(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), 100.0);
 	}
 
-	// 无限火箭助推
+	// Infinite Rocket Boost
 	if (NPC_RAGDOLL_VALUES[InfiniteBoostIndex] > 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		if (getGameVersion() > 36 && VEHICLE::_HAS_VEHICLE_ROCKET_BOOST(PED::GET_VEHICLE_PED_IS_IN(playerPed, false))) {
 			if (NPC_RAGDOLL_VALUES[InfiniteBoostIndex] == 1 && CONTROLS::IS_CONTROL_PRESSED(2, 103)) {
@@ -3552,15 +3161,15 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 刹车时禁用倒车
+	// Disable Reverse When Braking
 	if (featureReverseWhenBraking && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		Vehicle brakecar = PED::GET_VEHICLE_PED_IS_USING(playerPed);
 		if (VEHICLE::IS_THIS_MODEL_A_CAR(ENTITY::GET_ENTITY_MODEL(brakecar)) || VEHICLE::IS_THIS_MODEL_A_BIKE(ENTITY::GET_ENTITY_MODEL(brakecar)) || VEHICLE::IS_THIS_MODEL_A_QUADBIKE(ENTITY::GET_ENTITY_MODEL(brakecar)) ||
 			VEHICLE::IS_THIS_MODEL_A_BOAT(ENTITY::GET_ENTITY_MODEL(brakecar))) {
 			float veh_c_s = ENTITY::GET_ENTITY_SPEED(PED::GET_VEHICLE_PED_IS_USING(playerPed));
-			if (CONTROLS::IS_CONTROL_PRESSED(2, 71) && veh_c_s > 2.0) accelerating_c = true; // 正在加速
+			if (CONTROLS::IS_CONTROL_PRESSED(2, 71) && veh_c_s > 2.0) accelerating_c = true; // accelerating
 			if (veh_c_s < 2.1) accelerating_c = false;
-			if (CONTROLS::IS_DISABLED_CONTROL_PRESSED(2, 72) && veh_c_s > 2.0 && accelerating_c == true) reversing_c = true; // 后退/刹车
+			if (CONTROLS::IS_DISABLED_CONTROL_PRESSED(2, 72) && veh_c_s > 2.0 && accelerating_c == true) reversing_c = true; // reversing/braking
 			if (veh_c_s < 2.1 && reversing_c == true) {
 				AI::TASK_VEHICLE_TEMP_ACTION(playerPed, PED::GET_VEHICLE_PED_IS_USING(playerPed), 6, 100);
 				VEHICLE::SET_VEHICLE_BRAKE_LIGHTS(PED::GET_VEHICLE_PED_IS_USING(playerPed), true);
@@ -3572,19 +3181,19 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 	
-	// 氮气加速
+	// Nitrous
 	if (nitrous_m == -2) nitrous_m = NitrousIndex;
 	if (NitrousIndex == 0 && nitrous_m != 0) nitrous_m = NitrousIndex;
 
-	if (NPC_RAGDOLL_VALUES[NitrousIndex] > 0) { // 车辆仅向上移动 61 车辆子模式上升 131
+	if (NPC_RAGDOLL_VALUES[NitrousIndex] > 0) { // VehicleMoveUpOnly 61 VehicleSubAscend 131
 		bool assigned = false;
 		for (int i = 1; i < 10; i++) {
 			if (get_hotkey_function_index(i) == 47) assigned = true;
 		}
 
 		if (nitrous_m != NitrousIndex) {
-			if (NitrousIndex == 1) set_status_text("氮气音效 开启！");
-			if (NitrousIndex == 2) set_status_text("氮气音效 关闭！");
+			if (NitrousIndex == 1) set_status_text("Sound ON");
+			if (NitrousIndex == 2) set_status_text("Sound OFF");
 			nitrous_m = NitrousIndex;
 		}
 
@@ -3603,7 +3212,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				char* Exhausts[] = { "exhaust", "exhaust_2", "exhaust_3", "exhaust_4", "exhaust_5", "exhaust_6", "exhaust_7", "exhaust_8", "exhaust_9", "exhaust_10", "exhaust_11", "exhaust_12", "exhaust_13", "exhaust_14", "exhaust_15", "exhaust_16" };
 				for (char* exhaust : Exhausts) {
 					if (ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(my_veh, exhaust) > -1) {
-						Vector3 exhaust_p = ENTITY::_GET_ENTITY_BONE_COORDS(my_veh, ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(my_veh, exhaust)); // "排气管"
+						Vector3 exhaust_p = ENTITY::_GET_ENTITY_BONE_COORDS(my_veh, ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(my_veh, exhaust)); // "exhaust"
 						Vector3 exhaust_p_off = ENTITY::GET_OFFSET_FROM_ENTITY_GIVEN_WORLD_COORDS(my_veh, exhaust_p.x, exhaust_p.y, exhaust_p.z);
 						GRAPHICS::_SET_PTFX_ASSET_NEXT_CALL("core");
 						if (!is_this_a_heli_or_plane(my_veh)) GRAPHICS::START_PARTICLE_FX_NON_LOOPED_ON_ENTITY("veh_backfire", my_veh, exhaust_p_off.x, exhaust_p_off.y, exhaust_p_off.z, 0.0f, ENTITY::GET_ENTITY_PITCH(my_veh), 0.0f, 1.0f, false, false, false);
@@ -3628,13 +3237,13 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		nitro_e = false;
 	}
 
-	// 外部车辆控制
+	// outside vehicle control
 	if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		vehicle_been_used = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		Shut_seconds = 0;
 	}
 	
-	// 定时关闭引擎
+	// Shut the engine with time
 	if (VEH_AUTO_SHUT_ENGINE_VALUES[AutoShutEngineIndex] > 0 && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && VEHICLE::GET_IS_VEHICLE_ENGINE_RUNNING(vehicle_been_used)) {
 		engine_secs_passed = clock() / CLOCKS_PER_SEC;
 		if (((clock() / CLOCKS_PER_SEC) - engine_secs_curr) != 0) {
@@ -3644,7 +3253,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		if (Shut_seconds == VEH_AUTO_SHUT_ENGINE_VALUES[AutoShutEngineIndex]) VEHICLE::SET_VEHICLE_ENGINE_ON(vehicle_been_used, false, true, false);
 	}
 
-	// 将车辆固定在地面
+	// Stick Vehicle To Ground
 	if (featureSticktoground) {
 		Vehicle groundcar = PED::GET_VEHICLE_PED_IS_USING(playerPed);
 		if (VEHICLE::IS_THIS_MODEL_A_CAR(ENTITY::GET_ENTITY_MODEL(groundcar)) && ENTITY::GET_ENTITY_MODEL(groundcar) != GAMEPLAY::GET_HASH_KEY("DELUXO") && ENTITY::GET_ENTITY_MODEL(groundcar) != GAMEPLAY::GET_HASH_KEY("SCRAMJET")) {
@@ -3653,7 +3262,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 抛锚
+	// Drop Anchor
 	if (anchor_dropped == true) {
 		float height = -1.0;
 		Vector3 coords_b_m = ENTITY::GET_ENTITY_COORDS(veh_anchor, true);
@@ -3692,14 +3301,14 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			veh = temp_vehicle;
 		}
 		if (featureVehDoorOpenCloseTime + 100 < GetTickCount()) { // 150
-			float doorAngle = VEHICLE::GET_VEHICLE_DOOR_ANGLE_RATIO(veh, picked_door); // 这是我能想到的检测部件是否被动画化的最佳方法。
+			float doorAngle = VEHICLE::GET_VEHICLE_DOOR_ANGLE_RATIO(veh, picked_door); //Best way I could figure out to detect if the part is animated.
 			if (doorAngle < 0.01) VEHICLE::SET_VEHICLE_DOOR_OPEN(veh, picked_door, false, 0);
 			else VEHICLE::SET_VEHICLE_DOOR_SHUT(veh, picked_door, 0);
 			featureVehDoorOpenCloseTime = GetTickCount();
 		}
 	} //else PED::SET_PED_CAN_SWITCH_WEAPON(PLAYER::PLAYER_PED_ID(), true);
 
-	//////////////////////////////////////////////////// 玩家/车辆防护力场 ////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////// PLAYER/VEHICLE FORCE SHIELD ////////////////////////////////////////////////////////
 	if ((VEH_MASS_VALUES[VehMassMultIndex] > 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && !PED::IS_PED_IN_ANY_PLANE(playerPed) && !PED::IS_PED_IN_ANY_HELI(playerPed)) || 
 		(VEH_MASS_VALUES[current_player_forceshieldN] > 0 && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0))) {
 		const int OBJ_ARR_SIZE = 1024;
@@ -3717,7 +3326,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		float v_y = (cos(rad) * p_force * 10);
 		float v_z = p_force * (CamRot.x * 0.2);
 		
-		int count_v = worldGetAllVehicles(nearbyObj, OBJ_ARR_SIZE); // 车辆
+		int count_v = worldGetAllVehicles(nearbyObj, OBJ_ARR_SIZE); // vehicles
 		for (int i = 0; i < count_v; i++) {
 			Vector3 coordsveh = ENTITY::GET_ENTITY_COORDS(nearbyObj[i], true);
 			veh_distance_x = (coordsme.x - coordsveh.x);
@@ -3740,9 +3349,9 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					if (VEH_MASS_VALUES[current_player_forceshieldN] == 50000) ENTITY::APPLY_FORCE_TO_ENTITY(nearbyObj[i], 4, (ENTITY::GET_ENTITY_SPEED(my_shield) * VEH_MASS_VALUES[current_player_forceshieldN]), 0, 0, 0, 0, 0, 1, true, true, true, true, true);
 				}
 			}
-		} // 车辆循环结束
+		} // end of for vehicles
 		
-		int count_p = worldGetAllPeds(nearbyObj, OBJ_ARR_SIZE); // 行人
+		int count_p = worldGetAllPeds(nearbyObj, OBJ_ARR_SIZE); // pedestrians
 		for (int i = 0; i < count_p; i++) {
 			Vector3 coordsveh = ENTITY::GET_ENTITY_COORDS(nearbyObj[i], true);
 			veh_distance_x = (coordsme.x - coordsveh.x);
@@ -3771,9 +3380,9 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					if (VEH_MASS_VALUES[current_player_forceshieldN] == 50000) ENTITY::APPLY_FORCE_TO_ENTITY(nearbyObj[i], 4, (ENTITY::GET_ENTITY_SPEED(my_shield) * VEH_MASS_VALUES[current_player_forceshieldN]), 0, 0, 0, 0, 0, 1, true, true, true, true, true);
 				}
 			}
-		} // 行人循环结束
+		} // end of for peds
 		
-		int count_o = worldGetAllObjects(nearbyObj, OBJ_ARR_SIZE); // 对象
+		int count_o = worldGetAllObjects(nearbyObj, OBJ_ARR_SIZE); // objects
 		for (int i = 0; i < count_o; i++) {
 			Vector3 coordsveh = ENTITY::GET_ENTITY_COORDS(nearbyObj[i], true);
 			veh_distance_x = (coordsme.x - coordsveh.x);
@@ -3796,42 +3405,42 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					if (VEH_MASS_VALUES[current_player_forceshieldN] == 50000) ENTITY::APPLY_FORCE_TO_ENTITY(nearbyObj[i], 4, (ENTITY::GET_ENTITY_SPEED(my_shield) * VEH_MASS_VALUES[current_player_forceshieldN]), 0, 0, 0, 0, 0, 1, true, true, true, true, true);
 				}
 			}
-		} // 对象循环结束
+		} // end of for objects
 	}
 	
-	/////////////////// 重型车辆 /////////////////////
+	/////////////////// HEAVY VEHICLE /////////////////////
 	if (VEH_TURN_SIGNALS_ACCELERATION_VALUES[HeavyVehIndex] > 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && !PED::IS_PED_IN_ANY_PLANE(playerPed) && !PED::IS_PED_IN_ANY_HELI(playerPed)) {
 		const int OBJ_ARR_SIZE = 1024;
 		Object nearbyObj[OBJ_ARR_SIZE];
 		Object my_shield = PED::GET_VEHICLE_PED_IS_USING(playerPed);
 		float vehspeed = ENTITY::GET_ENTITY_SPEED(my_shield);
 		Vector3 CamRot = ENTITY::GET_ENTITY_ROTATION(playerPed, 0);
-		int p_force = VEH_TURN_SIGNALS_ACCELERATION_VALUES[HeavyVehIndex]; // 1; // 3; // 车辆速度; // / 10; // 5; 
+		int p_force = VEH_TURN_SIGNALS_ACCELERATION_VALUES[HeavyVehIndex]; // 1; // 3; // vehspeed; // / 10; // 5; 
 		float rad = 2 * 3.14 * (CamRot.z / 360);
 		float v_x = -(sin(rad) * p_force * 10);
 		float v_y = (cos(rad) * p_force * 10);
 		float v_z = p_force * (CamRot.x * 0.2);
 		
-		int count_v = worldGetAllVehicles(nearbyObj, OBJ_ARR_SIZE); // 车辆
+		int count_v = worldGetAllVehicles(nearbyObj, OBJ_ARR_SIZE); // vehicles
 		for (int i = 0; i < count_v; i++) {
 			if (ENTITY::IS_ENTITY_TOUCHING_ENTITY(PED::GET_VEHICLE_PED_IS_USING(playerPed), nearbyObj[i]) && nearbyObj[i] != PED::GET_VEHICLE_PED_IS_USING(playerPed)) {
 				bool v_atfront = false;
 				bool v_behind = false;
 				Vector3 coordsme = ENTITY::GET_ENTITY_COORDS(my_shield, true);
 				Vector3 coordsentity = ENTITY::GET_ENTITY_COORDS(nearbyObj[i], true);
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 135 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 225) { // 南方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 135 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 225) { // south
 					if (coordsentity.y < coordsme.y) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 315 || ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 45) { // 北方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 315 || ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 45) { // north
 					if (coordsentity.y > coordsme.y) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 46 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 134) { // 西方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 46 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 134) { // west
 					if (coordsentity.x < coordsme.x) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 226 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 314) { // 东方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 226 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 314) { // east
 					if (coordsentity.x > coordsme.x) v_atfront = true;
 					else v_behind = true;
 				}
@@ -3846,28 +3455,28 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					v_behind = false;
 				}
 			}
-		} // 车辆循环结束
+		} // end of for vehicles
 
-		int count_p = worldGetAllPeds(nearbyObj, OBJ_ARR_SIZE); // 行人
+		int count_p = worldGetAllPeds(nearbyObj, OBJ_ARR_SIZE); // pedestrians
 		for (int i = 0; i < count_p; i++) {
 			if (ENTITY::IS_ENTITY_TOUCHING_ENTITY(PED::GET_VEHICLE_PED_IS_USING(playerPed), nearbyObj[i]) && nearbyObj[i] != playerPed) {
 				bool v_atfront = false;
 				bool v_behind = false;
 				Vector3 coordsme = ENTITY::GET_ENTITY_COORDS(my_shield, true);
 				Vector3 coordsentity = ENTITY::GET_ENTITY_COORDS(nearbyObj[i], true);
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 135 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 225) { // 南方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 135 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 225) { // south
 					if (coordsentity.y < coordsme.y) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 315 || ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 45) { // 北方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 315 || ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 45) { // north
 					if (coordsentity.y > coordsme.y) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 46 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 134) { // 西方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 46 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 134) { // west
 					if (coordsentity.x < coordsme.x) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 226 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 314) { // 东方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 226 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 314) { // east
 					if (coordsentity.x > coordsme.x) v_atfront = true;
 					else v_behind = true;
 				}
@@ -3888,28 +3497,28 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					v_behind = false;
 				}
 			}
-		} // 行人循环结束
+		} // end of for peds
 
-		int count_o = worldGetAllObjects(nearbyObj, OBJ_ARR_SIZE); // 对象
+		int count_o = worldGetAllObjects(nearbyObj, OBJ_ARR_SIZE); // objects
 		for (int i = 0; i < count_o; i++) {
 			if (ENTITY::IS_ENTITY_TOUCHING_ENTITY(PED::GET_VEHICLE_PED_IS_USING(playerPed), nearbyObj[i]) && nearbyObj[i] != my_shield) {
 				bool v_atfront = false;
 				bool v_behind = false;
 				Vector3 coordsme = ENTITY::GET_ENTITY_COORDS(my_shield, true);
 				Vector3 coordsentity = ENTITY::GET_ENTITY_COORDS(nearbyObj[i], true);
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 135 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 225) { // 南方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 135 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 225) { // south
 					if (coordsentity.y < coordsme.y) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 315 || ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 45) { // 北方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 315 || ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 45) { // north
 					if (coordsentity.y > coordsme.y) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 46 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 134) { // 西方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 46 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 134) { // west
 					if (coordsentity.x < coordsme.x) v_atfront = true;
 					else v_behind = true;
 				}
-				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 226 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 314) { // 东方
+				if (ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) >= 226 && ENTITY::_GET_ENTITY_PHYSICS_HEADING(playerPed) <= 314) { // east
 					if (coordsentity.x > coordsme.x) v_atfront = true;
 					else v_behind = true;
 				}
@@ -3924,10 +3533,10 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					v_behind = false;
 				}
 			}
-		} // 对象循环结束
+		} // end of for objects
 	}
 			
-	//////////////////////////////////////////////////// 车辆转向灯 ///////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////// VEHICLE INDICATORS ///////////////////////////////////////////////////////////
 	if ((VEH_TURN_SIGNALS_VALUES[turnSignalsIndex] > 0 || featureHazards) && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, 1)) {
 		controllightsenabled_l = false;
 		controllightsenabled_r = false;
@@ -3939,22 +3548,22 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		Vehicle vehturn = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		int vehturnspeed = ENTITY::GET_ENTITY_SPEED(vehturn);
 		int steer_turn = CONTROLS::GET_CONTROL_VALUE(0, 9);
-		bool leftKey = IsKeyJustUp(KeyConfig::KEY_VEH_LEFTBLINK) || CONTROLS::IS_CONTROL_JUST_PRESSED(2, controller_binds["KEY_VEH_LEFTBLINK"].first); // 左转向灯按键 - CONTROLLER_BTN_TRIGGER_L
-		bool rightKey = IsKeyJustUp(KeyConfig::KEY_VEH_RIGHTBLINK) || CONTROLS::IS_CONTROL_JUST_PRESSED(2, controller_binds["KEY_VEH_RIGHTBLINK"].first); // 右转向灯按键 - CONTROLLER_BTN_TRIGGER_R
-		bool emergencyKey = IsKeyJustUp(KeyConfig::KEY_VEH_EMERGENCYBLINK) || CONTROLS::IS_CONTROL_JUST_PRESSED(2, controller_binds["KEY_VEH_EMERGENCYBLINK"].first); // 应急双闪灯按键 - CONTROLLER_BTN_B
+		bool leftKey = IsKeyJustUp(KeyConfig::KEY_VEH_LEFTBLINK) || CONTROLS::IS_CONTROL_JUST_PRESSED(2, controller_binds["KEY_VEH_LEFTBLINK"].first); // left key - CONTROLLER_BTN_TRIGGER_L
+		bool rightKey = IsKeyJustUp(KeyConfig::KEY_VEH_RIGHTBLINK) || CONTROLS::IS_CONTROL_JUST_PRESSED(2, controller_binds["KEY_VEH_RIGHTBLINK"].first); // right key - CONTROLLER_BTN_TRIGGER_R
+		bool emergencyKey = IsKeyJustUp(KeyConfig::KEY_VEH_EMERGENCYBLINK) || CONTROLS::IS_CONTROL_JUST_PRESSED(2, controller_binds["KEY_VEH_EMERGENCYBLINK"].first); // emergency signal key - CONTROLLER_BTN_B
 
 		bool b_pressed = false;
 		if (IsKeyDown(VK_LBUTTON) || IsKeyDown(VK_RBUTTON)) b_pressed = true;
 
 		if (VEH_TURN_SIGNALS_VALUES[turnSignalsIndex] > 0) {
-			if (leftKey && b_pressed == false) { // 手动左转向灯
+			if (leftKey && b_pressed == false) { // manual left turn signal
 				turn_check_left = !turn_check_left;
 				turn_check_right = false;
 				controllightsenabled_l = turn_check_left;
 				controllightsenabled_r = false;
 			}
 
-			if (rightKey && b_pressed == false) { // 手动右转向灯
+			if (rightKey && b_pressed == false) { // manual right turn signal
 				turn_check_right = !turn_check_right;
 				turn_check_left = false;
 				controllightsenabled_r = turn_check_right;
@@ -3979,16 +3588,16 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				turn_check_left = true;
 			}
 
-			if (VEH_TURN_SIGNALS_VALUES[turnSignalsIndex] != 1) { // 自动转向灯
+			if (VEH_TURN_SIGNALS_VALUES[turnSignalsIndex] != 1) { // auto blinkers
 				if (vehturnspeed < VEH_TURN_SIGNALS_VALUES[turnSignalsIndex]) {
-					if (steer_turn == 0 && !turn_check_left && b_pressed == false) { // 车轮向左转
+					if (steer_turn == 0 && !turn_check_left && b_pressed == false) { // wheel turned left
 						turn_check_left = true;
 						turn_check_right = false;
 						controllightsenabled_l = turn_check_left;
 						controllightsenabled_r = false;
 						autocontrol = true;
 					}
-					if (steer_turn == 254 && !turn_check_right && b_pressed == false) { // 车轮向右转
+					if (steer_turn == 254 && !turn_check_right && b_pressed == false) { // wheel turned right
 						turn_check_right = true;
 						turn_check_left = false;
 						controllightsenabled_r = turn_check_right;
@@ -3998,7 +3607,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				}
 			}
 
-			// 如果车辆转向角度大于某值，则开启转向灯
+			// enable indicators if vehicle's turn angle is more than
 			if (steer_turn == 254 || steer_turn == 0) {
 				if (turning_started == false) {
 					temp_angle = ENTITY::GET_ENTITY_HEADING(vehturn);
@@ -4012,7 +3621,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				temp_angle = ENTITY::GET_ENTITY_HEADING(vehturn);
 			}
 
-			// 在经过一定时间后关闭转向灯
+			// disable indicators after some amount of time passed
 			if (CONTROLS::IS_CONTROL_PRESSED(2, 71) && VEH_TURN_SIGNALS_ACCELERATION_VALUES[turnSignalsAccelerationIndex] > 0 && turn_angle < VEH_TURN_SIGNALS_ANGLE_VALUES[turnSignalsAngleIndex]) { // turn_angle < 15
 				Accel_secs_passed = clock() / CLOCKS_PER_SEC;
 				if (((clock() / CLOCKS_PER_SEC) - Accel_secs_curr) != 0) {
@@ -4022,7 +3631,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			}
 			else Accel_seconds = 0;
 
-			// 在行驶一定距离后关闭转向灯
+			// disable indicators after some amount of metres passed
 			if (VEH_TURN_SIGNALS_ACCELERATION_VALUES[turnSignalsAccelerationIndex] > 0 && turn_angle < VEH_TURN_SIGNALS_ANGLE_VALUES[turnSignalsAngleIndex] && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) { // turn_angle < 15
 				if ((GAMEPLAY::GET_GAME_TIMER() - Time_tick_mileage) > 200) {
 					signal_meters = signal_meters + ((ENTITY::GET_ENTITY_SPEED(PED::GET_VEHICLE_PED_IS_IN(playerPed, 1)) * (1.60934 * 0.02)) * 6.6);
@@ -4066,13 +3675,13 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				else viz_veh_ind_left = false;
 				if (turn_check_right) viz_veh_ind_right = true;
 				else viz_veh_ind_right = false;
-				VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(vehturn, 1, turn_check_left);  // 左转向灯
-				VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(vehturn, 0, turn_check_right); // 右转向灯
+				VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(vehturn, 1, turn_check_left);  // left signal 
+				VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(vehturn, 0, turn_check_right); // right signal	
 			}
 		}
 	}
 
-	///////////////////////////////////// 显示载具状态转向 //////////////////////////////////////////////////////////
+	///////////////////////////////////// VISUALIZE VEHICLE INDICATORS //////////////////////////////////////////////////////////
 	if (bPlayerExists && (VEH_VISLIGHT_VALUES[VisLightIndex] > 0 || VEH_VISLIGHT_VALUES[VisLight3dIndex] > 0) && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		Vector3 veh_indicators = ENTITY::GET_ENTITY_COORDS(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), true);
 		int time_indicators = TIME::GET_CLOCK_HOURS();
@@ -4108,7 +3717,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	///////////////////////////////////// 保持引擎运转 ///////////////////////////////////////////////////////////////
+	///////////////////////////////////// KEEP THE ENGINE RUNNING ///////////////////////////////////////////////////////////////
 	if (bPlayerExists && NPC_RAGDOLL_VALUES[EngineRunningIndex] > 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)) {
 		Vehicle playerVehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		if (CONTROLS::IS_CONTROL_PRESSED(2, 75) && NPC_RAGDOLL_VALUES[EngineRunningIndex] == 1) VEHICLE::_SET_VEHICLE_JET_ENGINE_ON(playerVehicle, true);
@@ -4124,7 +3733,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 	
 	if (engine_tick < 11 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && NPC_RAGDOLL_VALUES[EngineRunningIndex] == 2 && (!featureVehSteerAngle)) VEHICLE::_SET_VEHICLE_JET_ENGINE_ON(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), true);
 	if (engine_tick > 10 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && NPC_RAGDOLL_VALUES[EngineRunningIndex] == 2 && (!featureVehSteerAngle)) VEHICLE::_SET_VEHICLE_JET_ENGINE_ON(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), false);
-	// 记住车轮角度功能的兼容性代码行
+	// Remember Wheel Angle feature compatibility lines
 	if (engine_tick < 3 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && NPC_RAGDOLL_VALUES[EngineRunningIndex] == 2 && featureVehSteerAngle) VEHICLE::_SET_VEHICLE_JET_ENGINE_ON(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), true);
 	if (engine_tick > 2 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && NPC_RAGDOLL_VALUES[EngineRunningIndex] == 2 && featureVehSteerAngle) VEHICLE::_SET_VEHICLE_JET_ENGINE_ON(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), false);
 	//
@@ -4132,7 +3741,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 
 	if (bPlayerExists && NPC_RAGDOLL_VALUES[EngineRunningIndex] == 0 && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && CONTROLS::IS_CONTROL_PRESSED(2, 75)) VEHICLE::_SET_VEHICLE_JET_ENGINE_ON(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), false);
 	
-	// 直升机的航线
+	// Helicopter's lines
 	if (!PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && current_veh_e != -1 && NPC_RAGDOLL_VALUES[EngineRunningIndex] > 0 && !featureFuel) {
 		if (NPC_RAGDOLL_VALUES[EngineRunningIndex] == 1) {
 			VEHICLE::SET_HELI_BLADES_SPEED(current_veh_e, 1.0f);
@@ -4160,7 +3769,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		if (NPC_RAGDOLL_VALUES[EngineRunningIndex] == 2 && engine_tick > 2) current_veh_e = -1;
 	}
 	
-	///////////////////////////////////////////////// 速度限制 ////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////// SPEED LIMIT ////////////////////////////////////////////////////////////////
 	if (bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 1) && (VEH_SPEEDLIMITER_VALUES[speedLimiterIndex] > 0) && speedlimiter_switch && !PED::IS_PED_IN_ANY_PLANE(PLAYER::PLAYER_PED_ID()) && !PED::IS_PED_IN_ANY_HELI(PLAYER::PLAYER_PED_ID())) {
 		Vehicle vehlimit = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		ENTITY::SET_ENTITY_MAX_SPEED(vehlimit, VEH_SPEEDLIMITER_VALUES[speedLimiterIndex]);
@@ -4220,7 +3829,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		speed_limit_e = false;
 	}
 
-	///////////////////////////////////////////// 自动锁定驾驶侧车门 ///////////////////////////////////////////////////////////
+	///////////////////////////////////////////// AUTOLOCK DRIVER DOOR ///////////////////////////////////////////////////////////
 	if (bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 1) && (VEH_SPEEDLIMITER_VALUES[DoorAutolockIndex] > 0)) { 
 		Vehicle vehautolock = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		int vehcurrautospeed = ENTITY::GET_ENTITY_SPEED(vehautolock);
@@ -4230,7 +3839,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		} else VEHICLE::SET_VEHICLE_DOORS_LOCKED(vehautolock, 0);
 	}
 
-	///////////////////////////////////////////////// 默认关闭灯光 ///////////////////////////////////////////////////////
+	///////////////////////////////////////////////// LIGHTS OFF BY DEFAULT ///////////////////////////////////////////////////////
 	if (bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 1) && (NPC_RAGDOLL_VALUES[lightsOffIndex] > 0)) {
 		Vehicle vehlights = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		int time = TIME::GET_CLOCK_HOURS();
@@ -4295,7 +3904,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-//////////////////////////////////////////////// 夜间无灯光时自动切换 ///////////////////////////////////////////////////////
+//////////////////////////////////////////////// NO LIGHTS ON AT NIGHT AUTO TOGGLE ///////////////////////////////////////////////////////
 	if (bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 1) && featureAutoToggleLights) { 
 		Vehicle vehlights = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		int autotime = TIME::GET_CLOCK_HOURS();
@@ -4319,16 +3928,16 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 	}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-///// <--- 燃油消耗 /////
+	///// <--- FUEL CONSUMPTION /////
 	fuel(); 
-
-	///// <--- 交通法规 /////
+	
+	///// <--- ROAD LAWS /////
 	road_laws(); 
 
-	///// <--- 引擎可能损坏 /////
-	engine_can_degrade();   
+	///// <--- ENGINE CAN DAMAGE /////
+	engine_can_degrade(); 
 
-///////////////////////////////////////////// 载具跟踪 /////////////////////////////////////////////////////////////
+///////////////////////////////////////////// VEHICLE TRACKING /////////////////////////////////////////////////////////////
 	if (!featureRememberVehicles || DLC2::GET_IS_LOADING_SCREEN_ACTIVE()) {
 		if (!VEHICLES_REMEMBER.empty()) {
 			if (!BLIPTABLE_VEH.empty()) {
@@ -4382,7 +3991,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 
 	if (GAMEPLAY::GET_MISSION_FLAG() == 0 && !SCRIPT::HAS_SCRIPT_LOADED("fbi4_prep3amb") && !SCRIPT::HAS_SCRIPT_LOADED("finale_heist_prepeamb") && !SCRIPT::HAS_SCRIPT_LOADED("agency_prep2amb")) {
 		
-		// 自动加载已追踪的车辆
+		// auto load tracked vehicles
 		if (featureRememberVehicles && featureRestoreTracked && restored_v == false) {
 			trck_secs_passed = clock() / CLOCKS_PER_SEC;
 			if (((clock() / CLOCKS_PER_SEC) - trck_secs_curr) != 0) {
@@ -4409,14 +4018,14 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			}
 		}
 		//
-		// 主体部分
+		// main body
 		if ((featureRememberVehicles/* && bPlayerExists*/ && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && VEH_VEHREMEMBER_VALUES[VehRememberIndex] != 666) ||
 			(featureRememberVehicles/* && bPlayerExists*/ && PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0) && VEH_VEHREMEMBER_VALUES[VehRememberIndex] == 666 && manual_veh_tr == true)) {
 			Vehicle veh_rem = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 			
-			// 保存到车库
-			if (VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("迈克尔 - 比弗利山庄", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())) || VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("富兰克林 - 山丘", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())) ||
-				VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("富兰克林 - 姨妈家", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())) || VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("崔佛 - 乡村", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())))
+			// save in garage
+			if (VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("Michael - Beverly Hills", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())) || VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("Franklin - Hills", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())) ||
+				VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("Franklin - Aunt", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())) || VEHICLE::IS_VEHICLE_IN_GARAGE_AREA("Trevor - Countryside", PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())))
 			{
 				Vehicle my_c_v = PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID());
 				ENTITY::SET_ENTITY_AS_NO_LONGER_NEEDED(&my_c_v);
@@ -4455,9 +4064,9 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 
 			manual_veh_tr = false;
 
-		} // 主体部分结束
+		} // end of the main body
 
-		  // 自动保存已追踪的车辆
+		// auto save tracked vehicles
 		if (featureRememberVehicles && featureRestoreTracked && restored_v == true && MISC_PHONE_FREESECONDS_VALUES[VehTrackedAutoSaveIndex] > 0) {
 			trck_secs_passed = clock() / CLOCKS_PER_SEC;
 			if (((clock() / CLOCKS_PER_SEC) - trck_secs_curr) != 0) {
@@ -4477,7 +4086,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 	
-////////////////////////////////////////////////////// 里程数设置 ///////////////////////////////////////////////////////
+////////////////////////////////////////////////////// MILEAGE OPTION ///////////////////////////////////////////////////////
 	if (featureMileage && PED::IS_PED_IN_ANY_VEHICLE(playerPed, true))
 	{
 		float veh_mileage_speed = ENTITY::GET_ENTITY_SPEED(PED::GET_VEHICLE_PED_IS_IN(playerPed, 1));
@@ -4491,7 +4100,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 
 		std::string MileageStatusLines[1];
 		std::stringstream ss;
-		ss << fixed << setprecision(2) << "\n" << mileage << " 米" << endl;
+		ss << fixed << setprecision(2) << "\n" << mileage << " m" << endl;
 		int index = 0;
 		MileageStatusLines[index++] = ss.str();
 		int numActualLines = 0;
@@ -4507,12 +4116,12 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		float rectYScaled = 1 - (((6 + (1 * 1)) / (float)screen_h) * 5);
 		float rectWidthScaled = (360 / (float)screen_w) / 2; // 460
 		float rectHeightScaled = (25 + (1 * 18)) / (float)screen_h; // 30
-		int rect_col[4] = { 0, 0, 0, 180 }; // 128, 128, 128, 75   里程显示 背景透明度
+		int rect_col[4] = { 0, 0, 0, 255 }; // 128, 128, 128, 75
 		GRAPHICS::DRAW_RECT(rectXScaled, rectYScaled, rectWidthScaled, rectHeightScaled, rect_col[0], rect_col[1], rect_col[2], rect_col[3]);
 	}
 	else mileage = 0;
 
-////////////////////////////////////////////////////// 真实碰撞 //////////////////////////////////////////////////////
+////////////////////////////////////////////////////// REALISTIC CRASHES //////////////////////////////////////////////////////
 	if (featureNoVehFlip) {
 		Vehicle vehnoflip = PED::GET_VEHICLE_PED_IS_IN(playerPed, 1);
 		Vector3 veh_flip = ENTITY::GET_ENTITY_COORDS(vehnoflip, true);
@@ -4568,7 +4177,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-///////////////////////////// 保存方向盘角度 //////////////////////////// 原始代码由 MRGTAMODSGERMAN 编写
+///////////////////////////// REMEMBER STEERING ANGLE //////////////////////////// ORIGINAL CODE BY MRGTAMODSGERMAN 
 	if (featureVehSteerAngle && !STREAMING::HAS_MODEL_LOADED(GAMEPLAY::GET_HASH_KEY("BMX"))) STREAMING::REQUEST_MODEL(GAMEPLAY::GET_HASH_KEY("BMX"));
 
 	if (featureVehSteerAngle && PED::IS_PED_IN_ANY_VEHICLE(playerPed, true) && CONTROLS::IS_CONTROL_PRESSED(2, 75)) { // && !PED::IS_PED_ON_ANY_BIKE(playerPed)
@@ -4582,17 +4191,17 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			/*XPOS_2*/0.0, /*YPOS_2*/0.0, /*ZPOS_2*/0.0, /*XROT*/0.0, /*YROT*/0.0, /*ZROT*/0.0, /*BREAKFORCE*/1.0, /*FIXEDROT*/true, /*P15*/false, /*COLLISION*/false, /*P17*/1, /*P18*/true);
 		ENTITY::SET_ENTITY_ALPHA(temp_object, 0, 0);
 		if (NPC_RAGDOLL_VALUES[EngineRunningIndex] < 2) WAIT(1000);
-		if (NPC_RAGDOLL_VALUES[EngineRunningIndex] == 2) WAIT(100); // 保持引擎运行功能兼容性代码行
+		if (NPC_RAGDOLL_VALUES[EngineRunningIndex] == 2) WAIT(100); // Keep Engine Running feature compatibility line 
 
 		ENTITY::DETACH_ENTITY(myVehicle, true, true);
 		VEHICLE::DELETE_VEHICLE(&temp_object);
 	} 
 	
-///////////////////////////////////// 空袭 ///////////////////////////////////
+///////////////////////////////////// AIRSTRIKE ///////////////////////////////////
 	if (featureAirStrike && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, false)) s_message = false;
 	if (featureAirStrike) {
 		if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, false) && s_message == false) {
-			set_status_text("~y~ 按 E 键 ~g~ 投放炸弹 ~p~ 空袭！");
+			set_status_text("Press your ~g~ horn button ~w~ for an airstrike");
 			s_message = true;
 		}
 		Vehicle playerVehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
@@ -4653,16 +4262,16 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-//////////////////////////////////// 投放路钉 //////////////////////////////////
+//////////////////////////////////// DROP ROAD SPIKES //////////////////////////////////
 	if (featureDropSpikes && !PED::IS_PED_IN_ANY_VEHICLE(playerPed, false)) s_message = false;
 	if (featureDropSpikes) {
 		if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, false) && s_message == false) {
-			set_status_text("~y~ 按 E 键 ~g~ 投放布置 ~p~ 路钉！");
+			set_status_text("Press your ~g~ horn button ~w~ to deploy road spikes");
 			s_message = true;
 		}
 		if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, false)) playerVehicle_s = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
 		if ((VEHICLE::IS_THIS_MODEL_A_CAR(ENTITY::GET_ENTITY_MODEL(playerVehicle_s)) || VEHICLE::IS_THIS_MODEL_A_BIKE(ENTITY::GET_ENTITY_MODEL(playerVehicle_s)) ||
-			VEHICLE::IS_THIS_MODEL_A_QUADBIKE(ENTITY::GET_ENTITY_MODEL(playerVehicle_s))) && CONTROLS::IS_CONTROL_JUST_PRESSED(2, 86) && PED::IS_PED_IN_ANY_VEHICLE(playerPed, false)) { // 喇叭 
+			VEHICLE::IS_THIS_MODEL_A_QUADBIKE(ENTITY::GET_ENTITY_MODEL(playerVehicle_s))) && CONTROLS::IS_CONTROL_JUST_PRESSED(2, 86) && PED::IS_PED_IN_ANY_VEHICLE(playerPed, false)) { // horn 
 			Hash currVeh_m = ENTITY::GET_ENTITY_MODEL(playerVehicle_s);
 			char *name = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(currVeh_m);
 			Hash veh_h = GAMEPLAY::GET_HASH_KEY(name);
@@ -4693,13 +4302,13 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			int count_surr_sp = worldGetAllVehicles(surr_vehicles, arrSize_sp);
 			for (int i = 0; i < count_surr_sp; i++) {
 				if (surr_vehicles[i] != playerVehicle_s) {
-					int t_b_lf = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_lf"); // 左前轮
+					int t_b_lf = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_lf"); // left front wheel
 					Vector3 w_lf = ENTITY::GET_WORLD_POSITION_OF_ENTITY_BONE(surr_vehicles[i], t_b_lf);
-					int t_b_lr = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_lr"); // 左后轮
+					int t_b_lr = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_lr"); // left rear wheel
 					Vector3 w_lr = ENTITY::GET_WORLD_POSITION_OF_ENTITY_BONE(surr_vehicles[i], t_b_lr);
-					int t_b_rf = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_rf"); // 右前轮
+					int t_b_rf = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_rf"); // right front wheel
 					Vector3 w_rf = ENTITY::GET_WORLD_POSITION_OF_ENTITY_BONE(surr_vehicles[i], t_b_rf);
-					int t_b_rr = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_rr"); // 右后轮
+					int t_b_rr = ENTITY::GET_ENTITY_BONE_INDEX_BY_NAME(surr_vehicles[i], "wheel_rr"); // right rear wheel
 					Vector3 w_rr = ENTITY::GET_WORLD_POSITION_OF_ENTITY_BONE(surr_vehicles[i], t_b_rr);
 					for (int j = 0; j < SPIKES.size(); j++) {
 						VEHICLE::SET_VEHICLE_TYRES_CAN_BURST(surr_vehicles[i], true);
@@ -4727,7 +4336,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-///////////////////////////// 射击时摇下驾驶员车窗 /////////////////////
+///////////////////////////// ROLL DRIVER WINDOW WHEN SHOOT /////////////////////
 	if (featureRollWhenShoot && PED::IS_PED_IN_ANY_VEHICLE(playerPed, true) && VEHICLE::GET_PED_IN_VEHICLE_SEAT(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), -1) == playerPed) {
 		if (CONTROLS::IS_CONTROL_PRESSED(2, 70) && VEHICLE::IS_VEHICLE_WINDOW_INTACT(PED::GET_VEHICLE_PED_IS_IN(playerPed, false), 0)) {
 			AI::CLEAR_PED_TASKS(playerPed);
@@ -4740,7 +4349,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-/////////////////////////////////// 车辆液压系统 ////////////////////////////
+/////////////////////////////////// VEHICLE HYDRAULICS ////////////////////////////
 	if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, true) && (VEHICLE::IS_THIS_MODEL_A_CAR(ENTITY::GET_ENTITY_MODEL(veh)) || VEHICLE::IS_THIS_MODEL_A_BIKE(ENTITY::GET_ENTITY_MODEL(veh)) || VEHICLE::IS_THIS_MODEL_A_QUADBIKE(ENTITY::GET_ENTITY_MODEL(veh))) && 
 		VEH_HYDRAULICS_VALUES[HydraulicsIndex] != 0.0f) {
 		Vehicle myVehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
@@ -4751,7 +4360,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 	}
 ///////////////////////////////////////////////////////////////////////////////////
 
-// 跳跃式车辆
+	// Jumpy Vehicle
 	if (PED::IS_PED_IN_ANY_VEHICLE(playerPed, true) && (VEHICLE::IS_THIS_MODEL_A_CAR(ENTITY::GET_ENTITY_MODEL(veh)) || VEHICLE::IS_THIS_MODEL_A_BIKE(ENTITY::GET_ENTITY_MODEL(veh)) || VEHICLE::IS_THIS_MODEL_A_QUADBIKE(ENTITY::GET_ENTITY_MODEL(veh))) && 
 		VEH_TURN_SIGNALS_ACCELERATION_VALUES[JumpyVehIndex] > 0) {
 		Vehicle myVehicle = PED::GET_VEHICLE_PED_IS_IN(playerPed, false);
@@ -4766,7 +4375,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		if (VEHICLE::IS_VEHICLE_ON_ALL_WHEELS(myVehicle)) veh_jumped_n = 0; // (veh_jumped_n > 3 && VEHICLE::IS_VEHICLE_ON_ALL_WHEELS(myVehicle)) || 
 	}
 
-	// Kraken Avisa 载具的第一人称模式镜头错误修复
+	// Kraken Avisa first person mode camera bug fix
 	if (PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 0) && ENTITY::GET_ENTITY_MODEL(veh) == GAMEPLAY::GET_HASH_KEY("AVISA") && CAM::_0xEE778F8C7E1142E2(5) == 4) {
 		Vector3 playerPosition = ENTITY::GET_ENTITY_COORDS(playerPed, true);
 		Vector3 curRotation = ENTITY::GET_ENTITY_ROTATION(PED::GET_VEHICLE_PED_IS_USING(playerPed), 2);
@@ -4794,7 +4403,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 强制开启车辆灯光
+	// Force Vehicle Lights On
 	if(bPlayerExists) {
 		if(featureVehLightsOnUpdated || did_player_just_enter_vehicle(playerPed)){
 			if(featureVehLightsOn){
@@ -4808,14 +4417,14 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 		}
 	}
 
-	// 在消息框上方显示提示信息
+	// show a tip message above a message box
 	if (GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 0 && curr_message != "") {
 		keyboard_tip_message(curr_message);
 		keyboard_on_screen_already = false;
 	}
 	if ((GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 1 || GAMEPLAY::UPDATE_ONSCREEN_KEYBOARD() == 2) && curr_message != "" && keyboard_on_screen_already == false) curr_message = "";
 	
-	// 生成已保存车辆的快捷键
+	// Spawn Saved Vehicle Hotkey
 	if (is_hotkey_held_saved_veh_spawn() || veh_to_spawn != "") {
 		PED::SET_PED_CAN_SWITCH_WEAPON(playerPed, false);
 		UI::HIDE_HUD_COMPONENT_THIS_FRAME(19);
@@ -4867,7 +4476,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			!(GetKeyState('8') & 0x8000) && !(GetKeyState('9') & 0x8000) && !(GetKeyState('0') & 0x8000)) entered_sp_v = false;
 
 		std::stringstream ss55;
-		ss55 << "\n输入车辆编号: " << veh_to_spawn;
+		ss55 << "\n N: " << veh_to_spawn;
 		callsPerFrame = 0;
 		set_status_text_centre_screen(ss55.str());
 	}
@@ -4883,14 +4492,14 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 			SavedVehicleDBRow* savedVeh = savedVehs.at(tmp_n - 1);
 			spawn_saved_car(savedVeh->rowID, "");
 		}
-		else set_status_text("打错电话了！");
+		else set_status_text("Wrong number!");
 
 		PED::SET_PED_CAN_SWITCH_WEAPON(playerPed, true);
 		veh_to_spawn = "";
 	}
 	if (!is_hotkey_held_saved_veh_spawn() && veh_to_spawn == "" && !is_hotkey_held_openclose_door() && !is_hotkey_held_wanted_level()) PED::SET_PED_CAN_SWITCH_WEAPON(playerPed, true);
 
-/////////////////////////////////// 偷车贼 ///////////////////////////////////
+///////////////////////////////////	CAR THIEF ///////////////////////////////////
 	if (featureRoutineOfRinger && GAMEPLAY::GET_MISSION_FLAG() == 0) {
 		char* h_anim_dict = "veh@boat@predator@ds@base";
 		char* hw_anim_dict = "anim@veh@std@panto@ds@base";
@@ -4954,7 +4563,7 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 				}
 				if (breaking_secs_tick == 0 && ENTITY::IS_ENTITY_PLAYING_ANIM(playerPed, hw_anim_dict, animation_of_h, 3)) AI::STOP_ANIM_TASK(PLAYER::PLAYER_PED_ID(), hw_anim_dict, animation_of_h, 1.0);
 			}
-		} // 载具状态的结束
+		} // end of in vehicle
 
 		if (time_to_call_the_police == true && !featureWantedLevelFrozen) {
 			tick_pedcallingpolice_secs_passed = clock() / CLOCKS_PER_SEC;
@@ -5038,8 +4647,8 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 							srand(time(0));
 							if (veh_rnd == -1 || veh_rnd != temp_vehicle) {
 								veh_rnd = temp_vehicle;
-								tmp_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex]) + 1)); // 下边距 + 上边距
-								tmp_i_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex]) + 1)); // 下边距 + 上边距
+								tmp_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex]) + 1)); // DOWN MARGIN + UP MARGIN
+								tmp_i_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex]) + 1)); // DOWN MARGIN + UP MARGIN
 							}
 						}
 					}
@@ -5048,8 +4657,8 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 						srand(time(0));
 						if (veh_rnd == -1 || veh_rnd != temp_vehicle) {
 							veh_rnd = temp_vehicle;
-							tmp_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex]) + 1)); // 下边距 + 上边距
-							tmp_i_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex]) + 1)); // 下边距 + 上边距
+							tmp_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerBreakSecMinIndex]) + 1)); // DOWN MARGIN + UP MARGIN
+							tmp_i_denominator = (VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex] + rand() % ((VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMaxIndex] - VEH_RINGER_SECONDS_BREAK_VALUES[RingerHotwireSecMinIndex]) + 1)); // DOWN MARGIN + UP MARGIN
 						}
 					}
 				}
@@ -5137,11 +4746,11 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 					}
 				}
 			}
-		} // 非载具状态的结束
+		} // end of not in vehicle
 	}
 ///////////////////////////////////
 
-	// testing code; 请勿删除
+	// testing code; DO NOT DELETE
 	//if(bPlayerExists && PED::IS_PED_IN_ANY_VEHICLE(playerPed, false) && IsKeyJustUp(KeyConfig::KEY_VEH_STOP)){
 		//std::ofstream ofs("_colors.txt", std::ios::app | std::ios::out);
 		//int primary, secondary, pearl, wheel, mod11, mod12, mod13, mod21, mod22;
@@ -5186,14 +4795,14 @@ void update_vehicle_features(BOOL bPlayerExists, Ped playerPed){
 }
 
 bool did_player_just_enter_vehicle(Ped playerPed){
-	if(oldVehicleState == false && PED::IS_PED_IN_ANY_VEHICLE(playerPed, true)){ // 如果我们之前不在车里，但现在在车里...
+	if(oldVehicleState == false && PED::IS_PED_IN_ANY_VEHICLE(playerPed, true)){ // if we weren't in a car before, but we are now...
 		oldVehicleState = true;
 		return true;
 	}
 	return false;
 }
 
-void set_old_vehicle_state(bool updatedState){ // 被其他函数使用，例如传送到车辆中
+void set_old_vehicle_state(bool updatedState){ // used by other functions, like teleporting into cars
 	oldVehicleState = updatedState;
 }
 
@@ -5389,11 +4998,8 @@ void keyboard_tip_message(char* curr_message_s) {
 	UI::_DRAW_TEXT(0.5f, 0.37f);
 }
 
-//创建分类子菜单，并移交到与该分类相关的子子菜单
+//Creates category submenu and hands over to the sub-sub menu related to the category
 bool process_carspawn_menu() {
-	// 刷新读取外置XML文件（与process_custom_carspawn_menu保持一致）
-	ensure_custom_vehicles_loaded();
-	
 	std::vector<MenuItem<int>*> menuItems;
 
 	for (int i = 0; i < vHashLists.size(); i++)
@@ -5406,7 +5012,7 @@ bool process_carspawn_menu() {
 		if (i == 23)
 		{
 			MenuItem<int>* item = new MenuItem<int>();
-			item->caption = "其他";
+			item->caption = "Other";
 			item->value = i;
 			menuItems.push_back(item);
 			break;
@@ -5419,14 +5025,14 @@ bool process_carspawn_menu() {
 	}
 
 	MenuItem<int>* item = new MenuItem<int>();
-	item->caption = "手动输入名称";
+	item->caption = "Enter Name Manually";
 	item->value = -3;
 	menuItems.push_back(item);
 
-	return draw_generic_menu<int>(menuItems, &activeLineIndexCarSpawnMenu, "载具类型", onconfirm_spawn_menu_cars, nullptr, nullptr, nullptr);
+	return draw_generic_menu<int>(menuItems, &activeLineIndexCarSpawnMenu, "Vehicle Categories", onconfirm_spawn_menu_cars, nullptr, nullptr, nullptr);
 }
 
-//获取用户的选择并请求生成车辆
+//Gets the user's selection and requests it to be spawned
 bool onconfirm_vehlist_menu(MenuItem<int> choice) {
 	do_spawn_vehicle_hash(choice.value, choice.caption);
 	return false;
@@ -5434,44 +5040,37 @@ bool onconfirm_vehlist_menu(MenuItem<int> choice) {
 
 void spawn_veh_manually() {
 	keyboard_on_screen_already = true;
-	curr_message = "输入车辆名称 (示例: adder) 或 (输入: random 随机)";
-	std::string result = show_keyboard("手动输入名称", (char*)lastCustomVehicleSpawn.c_str());
+	curr_message = "Enter vehicle model name (e.g. adder or random):";
+	std::string result = show_keyboard("Enter Name Manually", (char*)lastCustomVehicleSpawn.c_str());
 
 	if (!result.empty()) {
 		result = trim(result);
 		lastCustomVehicleSpawn = result;
 		Hash hash = GAMEPLAY::GET_HASH_KEY((char*)result.c_str());
-		if (lastCustomVehicleSpawn != "random" && lastCustomVehicleSpawn != "Random" && lastCustomVehicleSpawn != "RANDOM" && 
-			lastCustomVehicleSpawn != "随机" && lastCustomVehicleSpawn != "SJ" && lastCustomVehicleSpawn != "sj" && 
-			(!STREAMING::IS_MODEL_IN_CDIMAGE(hash) || !STREAMING::IS_MODEL_A_VEHICLE(hash))) {
+		if (lastCustomVehicleSpawn != "random" && lastCustomVehicleSpawn != "Random" && lastCustomVehicleSpawn != "RANDOM" && (!STREAMING::IS_MODEL_IN_CDIMAGE(hash) || !STREAMING::IS_MODEL_A_VEHICLE(hash))) {
 			std::ostringstream ss;
-			ss << "~r~错误: ~s~找不到此模型 [~y~ " << result << " ~s~]";
+			ss << "~r~Error: Couldn't find model " << result;
 			set_status_text(ss.str());
 		}
-		if (lastCustomVehicleSpawn == "random" || lastCustomVehicleSpawn == "Random" || lastCustomVehicleSpawn == "RANDOM" || 
-			lastCustomVehicleSpawn == "随机" || lastCustomVehicleSpawn == "SJ" || lastCustomVehicleSpawn == "sj") {
-			if (vHashLists.size() <= 2) {
-				set_status_text("~r~错误: 没有足够的车辆类别！");
-			} else {
-				int random_category = (rand() % (vHashLists.size() - 2) + 1);
-				std::vector<Hash> tmp_amount = get_vehicles_from_category(random_category);
-				if (tmp_amount.empty()) {
-					set_status_text("~r~错误: 选定类别中没有车辆！");
-				} else {
-					int random_veh = rand() % tmp_amount.size();
-					do_spawn_vehicle_hash(tmp_amount[random_veh], get_vehicle_make_and_model(tmp_amount[random_veh]));
-					set_status_text("随机车辆生成完成！");
-				}
+		if (lastCustomVehicleSpawn == "random" || lastCustomVehicleSpawn == "Random" || lastCustomVehicleSpawn == "RANDOM" || (STREAMING::IS_MODEL_IN_CDIMAGE(hash) && STREAMING::IS_MODEL_A_VEHICLE(hash))) {
+			// random vehicle
+			int random_category = -1;
+			int	random_veh = -1;
+			std::vector<Hash> tmp_amount;
+			if (lastCustomVehicleSpawn == "random" || lastCustomVehicleSpawn == "Random" || lastCustomVehicleSpawn == "RANDOM") {
+				random_category = (rand() % (vHashLists.size() - 2) + 1); // UP MARGIN + DOWN MARGIN
+				tmp_amount = get_vehicles_from_category(random_category);
+				random_veh = (rand() % tmp_amount.size() + 0);
 			}
-		} else if (STREAMING::IS_MODEL_IN_CDIMAGE(hash) && STREAMING::IS_MODEL_A_VEHICLE(hash)) {
-			do_spawn_vehicle_hash(hash, result);
-			set_status_text("载具 [~y~ " + result + " ~s~] 生成完成！");
+			//
+			if (lastCustomVehicleSpawn == "random" || lastCustomVehicleSpawn == "Random" || lastCustomVehicleSpawn == "RANDOM") do_spawn_vehicle_hash(tmp_amount[random_veh], get_vehicle_make_and_model(tmp_amount[random_veh]));
+			if (STREAMING::IS_MODEL_IN_CDIMAGE(hash) && STREAMING::IS_MODEL_A_VEHICLE(hash)) do_spawn_vehicle_hash(GAMEPLAY::GET_HASH_KEY((char*)result.c_str()), result);
 		}
 	}
 }
 
 bool onconfirm_spawn_menu_cars(MenuItem<int> choice){
-    std::string caption = get_class_label(choice.value);
+	std::string caption = get_class_label(choice.value);
 	std::vector<MenuItem<int>*> menuItems;
 	std::vector<Hash> selectedCat = get_vehicles_from_category(choice.value);
 	int itemIndex = 0;
@@ -5481,16 +5080,22 @@ bool onconfirm_spawn_menu_cars(MenuItem<int> choice){
 		itemIndex++;
 		MenuItem<int>* item = new MenuItem<int>();
 		
-		if (get_vehicle_make_and_model(hash).compare("NULL") == 0 || get_vehicle_make_and_model(hash).compare("") == 0)
+		if (get_vehicle_make_and_model(hash).compare("NULL") == 0 || get_vehicle_make_and_model(hash).compare("") == 0) {
 			//item->caption = "Item " + std::to_string(itemIndex);
-			item->caption = GetVehicleModelName(hash);
-		else
+			char *model = GetVehicleModelName(hash);
+			if (model) {
+				item->caption = model;
+			}
+			else {
+				item->caption = "Unknown";
+			}
+		} else
 			item->caption = get_vehicle_make_and_model(hash);
 		item->value = hash;
 		menuItems.push_back(item);
 	}
 
-	if (choice.value == -3) { // 手动输入名称
+	if (choice.value == -3) { // enter name manually
 		spawn_veh_manually();
 		return false;
 	}
@@ -5510,139 +5115,53 @@ bool onconfirm_spawn_menu_cars(MenuItem<int> choice){
 	return draw_generic_menu<int>(params);
 }
 
-// 自定义外置 XML 分类菜单
-bool process_custom_carspawn_menu()
-{
-    if (!ensure_custom_vehicles_loaded())
-    {
-        set_status_text("~r~错误: 未找到 ent-vehicles.xml 或格式无效！");
-        return false;
-    }
-
-    if (g_CustomVehicleCategories.empty())
-    {
-        set_status_text("~r~错误: ent-vehicles.xml 中没有找到有效的车辆分类！");
-        return false;
-    }
-
-    std::vector<MenuItem<int>*> menuItems;
-    int cidx = 0;
-    for (const auto& cat : g_CustomVehicleCategories)
-    {
-        MenuItem<int>* item = new MenuItem<int>();
-        item->caption = cat;
-        item->value = cidx++;
-        menuItems.push_back(item);
-    }
-
-    return draw_generic_menu<int>(menuItems, &activeLineIndexCustomCarSpawnMenu, "新增车辆 - 类型", onconfirm_custom_spawn_menu_cars, nullptr, nullptr, nullptr);
-}
-
-// 自定义外置 XML 车型菜单与生成
-bool onconfirm_custom_spawn_menu_cars(MenuItem<int> choice)
-{
-    if (choice.value < 0 || choice.value >= (int)g_CustomVehicleCategories.size()) return false;
-    const std::string& cat = g_CustomVehicleCategories[choice.value];
-    const auto it = g_CustomVehicles.find(cat);
-    if (it == g_CustomVehicles.end()) return false;
-
-    std::vector<MenuItem<int>*> menuItems;
-    for (const auto& entry : it->second)
-    {
-        const std::string& model = entry.first;
-        const std::string& title = entry.second;
-        Hash hash = GAMEPLAY::GET_HASH_KEY((char*)model.c_str());
-
-        MenuItem<int>* item = new MenuItem<int>();
-        // 菜单系统采用 UTF-8 文本，直接传入 UTF-8 字符串
-        item->caption = title.empty() ? model : title;
-        item->value = hash;
-        menuItems.push_back(item);
-    }
-
-    if (menuItems.empty())
-    {
-        set_status_text("~r~错误: 此分类中没有车辆！");
-        return false;
-    }
-
-    MenuParameters<int> params(menuItems, cat);
-    params.menuSelectionPtr = 0;
-    params.onConfirmation = onconfirm_custom_vehlist_menu;
-    params.lineImageProvider = vehicle_image_preview_finder;
-    return draw_generic_menu<int>(params);
-}
-
-// 自定义车辆确认菜单处理函数
-bool onconfirm_custom_vehlist_menu(MenuItem<int> choice)
-{
-    DWORD model = choice.value;
-    std::string modelTitle = choice.caption;
-    
-    // 在用户选择车辆时进行模型验证
-    if (!STREAMING::IS_MODEL_IN_CDIMAGE(model))
-    {
-        set_status_text("~r~错误: 车辆模型不存在！\n~y~名称: " + modelTitle);
-        return false;
-    }
-    
-    if (!STREAMING::IS_MODEL_A_VEHICLE(model))
-    {
-        set_status_text("~r~错误: 指定的模型不是车辆！\n~y~名称: " + modelTitle);
-        return false;
-    }
-    
-    // 模型验证通过，生成车辆
-    return do_spawn_vehicle_hash(model, modelTitle);
-}
-
 bool do_spawn_vehicle_hash(int modelName, std::string modelTitle) {
 	DWORD model = modelName;
 
-	std::stringstream ss;  ss << "正在尝试生成 " << modelTitle << " 使用哈希值: " << modelName;
+	std::stringstream ss;  ss << "Attempting to spawn " << modelTitle << " with hash: " << modelName;
 	write_text_to_log_file(ss.str());
 
 	Vehicle veh = do_spawn_vehicle(model, modelTitle, true);
 	return false;
 }
 
-Vehicle do_spawn_vehicle(DWORD model, std::string modelTitle, bool cleanup) {
-	if (STREAMING::IS_MODEL_IN_CDIMAGE(model) && STREAMING::IS_MODEL_A_VEHICLE(model)) {
+Vehicle do_spawn_vehicle(DWORD model, std::string modelTitle, bool cleanup){
+	if(STREAMING::IS_MODEL_IN_CDIMAGE(model) && STREAMING::IS_MODEL_A_VEHICLE(model)){
 		STREAMING::REQUEST_MODEL(model);
-		while (!STREAMING::HAS_MODEL_LOADED(model)) {
-			if (veh_to_spawn.empty()) make_periodic_feature_call();
+		while(!STREAMING::HAS_MODEL_LOADED(model)){
+			if (veh_to_spawn == "") make_periodic_feature_call();
 			WAIT(0);
 		}
 
-		Vector3 minDimens, maxDimens;
+		Vector3 minDimens;
+		Vector3 maxDimens;
 		GAMEPLAY::GET_MODEL_DIMENSIONS(model, &minDimens, &maxDimens);
 		float spawnOffY = max(5.0f, 2.0f + 0.5f * (maxDimens.y - minDimens.y));
 
-		float lookDir = ENTITY::GET_ENTITY_HEADING(PLAYER::PLAYER_PED_ID());
+		FLOAT lookDir = ENTITY::GET_ENTITY_HEADING(PLAYER::PLAYER_PED_ID());
 		Vector3 coords = ENTITY::GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PLAYER::PLAYER_PED_ID(), 0.0, spawnOffY, 0.0);
-		Vehicle veh = VEHICLE::CREATE_VEHICLE(model, coords.x, coords.y, coords.z, lookDir, true, false);
+		Vehicle veh = VEHICLE::CREATE_VEHICLE(model, coords.x, coords.y, coords.z, lookDir, 1, 0);
 
-		if (!ENTITY::IS_ENTITY_IN_AIR(PLAYER::PLAYER_PED_ID())) {
+		//if we're mid-air, don't put it on the ground
+		if(!ENTITY::IS_ENTITY_IN_AIR(PLAYER::PLAYER_PED_ID())){
 			VEHICLE::SET_VEHICLE_ON_GROUND_PROPERLY(veh);
 		}
 
-		if (featureVehSpawnTuned && !tracked_being_restored) {
+		if(featureVehSpawnTuned && tracked_being_restored == false){
 			fully_tune_vehicle(veh, featureVehSpawnOptic);
 		}
 
-		if (featureVehSpawnInto && !tracked_being_restored) {
+		if(featureVehSpawnInto && tracked_being_restored == false){
 			PED::SET_PED_INTO_VEHICLE(PLAYER::PLAYER_PED_ID(), veh, -1);
-			oldVehicleState = false;
-			if (is_this_a_heli_or_plane(veh)) {
+			oldVehicleState = false; // set old vehicle state to false since we changed cars but didn't actually exit the last one
+
+			if(is_this_a_heli_or_plane(veh)){
 				VEHICLE::SET_HELI_BLADES_FULL_SPEED(PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID()));
 			}
 		}
 
-		if (!featureVehSpawnInto &&
-			(ENTITY::GET_ENTITY_MODEL(veh) == GAMEPLAY::GET_HASH_KEY("MINITANK") ||
-				ENTITY::GET_ENTITY_MODEL(veh) == GAMEPLAY::GET_HASH_KEY("RCBANDITO") ||
-				ENTITY::GET_ENTITY_MODEL(veh) == GAMEPLAY::GET_HASH_KEY("KOSATKA")) &&
-			!tracked_being_restored) {
+		if (!featureVehSpawnInto && (ENTITY::GET_ENTITY_MODEL(veh) == GAMEPLAY::GET_HASH_KEY("MINITANK") || ENTITY::GET_ENTITY_MODEL(veh) == GAMEPLAY::GET_HASH_KEY("RCBANDITO") || 
+			ENTITY::GET_ENTITY_MODEL(veh) == GAMEPLAY::GET_HASH_KEY("KOSATKA")) && tracked_being_restored == false) {
 			PED::SET_PED_INTO_VEHICLE(PLAYER::PLAYER_PED_ID(), veh, -1);
 			oldVehicleState = false;
 		}
@@ -5653,9 +5172,7 @@ Vehicle do_spawn_vehicle(DWORD model, std::string modelTitle, bool cleanup) {
 			VEHICLE::SET_VEHICLE_MOD_KIT(veh, 0);
 			VEHICLE::SET_VEHICLE_NUMBER_PLATE_TEXT_INDEX(veh, DefaultPlateIndex);
 		}
-		if (DefaultPlateIndex != -1 && DefaultPlateIndex >= VEHICLE::GET_NUMBER_OF_VEHICLE_NUMBER_PLATES()) {
-			DefaultPlateIndex = -1;
-		}
+		if (DefaultPlateIndex != -1 && DefaultPlateIndex >= VEHICLE::GET_NUMBER_OF_VEHICLE_NUMBER_PLATES()) DefaultPlateIndex = -1;
 
 		if (featureRoutineOfRinger) {
 			VEHICLES_AVAILABLE.push_back(veh);
@@ -5666,22 +5183,11 @@ Vehicle do_spawn_vehicle(DWORD model, std::string modelTitle, bool cleanup) {
 
 		WAIT(0);
 		STREAMING::SET_MODEL_AS_NO_LONGER_NEEDED(model);
-		if (cleanup) {
+		if(cleanup){
 			ENTITY::SET_VEHICLE_AS_NO_LONGER_NEEDED(&veh);
 		}
-
-		// 优化生成车辆提示
-		std::string displayName = modelTitle;
-		if (displayName.empty() || displayName == "NULL") {
-			displayName = get_vehicle_make_and_model(model);
-			if (displayName.empty() || displayName == "NULL") {
-				const char* name = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(model);
-				if (name && *name) displayName = name;
-				else displayName = "Unknown Vehicle";
-			}
-		}
-		set_status_text(displayName + " 生成完成！");
-
+		set_status_text(get_vehicle_make_and_model(model) + " spawned!");
+	
 		return veh;
 	}
 	return -1;
@@ -5764,7 +5270,7 @@ bool spawn_tracked_car(int slot, std::string caption) {
 	if (PED::IS_PED_IN_ANY_VEHICLE(PLAYER::PLAYER_PED_ID(), 0) && ENTITY::GET_ENTITY_MODEL(PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID())) == savedTVeh->model) veh = PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID());
 	
 	if (veh == -1) {
-		set_status_text("生成车辆失败了！");
+		set_status_text("Spawn failed");
 	}
 	else {
 		ENTITY::SET_ENTITY_AS_MISSION_ENTITY(veh, true, true);
@@ -5851,7 +5357,7 @@ bool spawn_tracked_car(int slot, std::string caption) {
 			VEHICLE::_SET_VEHICLE_INTERIOR_COLOUR(veh, savedTVeh->interiorColour);
 		}
 
-		// 加载已追踪的引擎声音
+		// loading of a tracked engine sound
 		if (featureEngineSound) {
 			char* currSound = new char[savedTVeh->engineSound.length() + 1];
 			strcpy(currSound, savedTVeh->engineSound.c_str());
@@ -5912,7 +5418,7 @@ bool spawn_saved_car(int slot, std::string caption){
 
 	Vehicle veh = do_spawn_vehicle(savedVeh->model, caption, false);
 	if(veh == -1){
-		set_status_text("生成车辆失败了！");
+		set_status_text("Spawn failed");
 	}
 	else{
 		VEHICLE::SET_VEHICLE_MOD_KIT(veh, 0);
@@ -5997,7 +5503,7 @@ bool spawn_saved_car(int slot, std::string caption){
 			VEHICLE::_SET_VEHICLE_INTERIOR_COLOUR(veh, savedVeh->interiorColour);
 		}
 
-		// 加载引擎声音
+		// loading of an engine sound
 		if (featureEngineSound) {
 			char *currSound = new char[savedVeh->engineSound.length() + 1];
 			strcpy(currSound, savedVeh->engineSound.c_str());
@@ -6027,7 +5533,7 @@ bool spawn_saved_car(int slot, std::string caption){
 		ENTITY::RESET_ENTITY_ALPHA(veh);
 
 		ENTITY::SET_VEHICLE_AS_NO_LONGER_NEEDED(&veh);
-	} // else 结束
+	} // end of else
 
 	for(std::vector<SavedVehicleDBRow*>::iterator it = savedVehs.begin(); it != savedVehs.end(); ++it){
 		delete (*it);
@@ -6039,10 +5545,10 @@ bool spawn_saved_car(int slot, std::string caption){
 
 bool onconfirm_savedveh_slot_menu(MenuItem<int> choice){
 	switch(choice.value){
-		case 1: //生成
+		case 1: //spawn
 			spawn_saved_car(activeSavedVehicleIndex, activeSavedVehicleSlotName);
 			break;
-		case 2: //覆盖
+		case 2: //overwrite
 		{
 			save_current_vehicle(activeSavedVehicleIndex);
 			requireRefreshOfVehSaveSlots = true;
@@ -6051,11 +5557,11 @@ bool onconfirm_savedveh_slot_menu(MenuItem<int> choice){
 			vehSaveMenuInterrupt = true;
 		}
 		break;
-		case 3: //重命名
+		case 3: //rename
 		{
 			keyboard_on_screen_already = true;
-			curr_message = "输入新名称"; // 重命名已保存的车辆
-			std::string result = show_keyboard("手动输入名称", (char*) activeSavedVehicleSlotName.c_str());
+			curr_message = "Enter a new name:"; // rename a saved vehicle
+			std::string result = show_keyboard("Enter Name Manually", (char*) activeSavedVehicleSlotName.c_str());
 			if(!result.empty()){
 				ENTDatabase* database = get_database();
 				database->rename_saved_vehicle(result, activeSavedVehicleIndex);
@@ -6068,7 +5574,7 @@ bool onconfirm_savedveh_slot_menu(MenuItem<int> choice){
 			vehSaveMenuInterrupt = true;
 		}
 		break;
-		case 4: //删除
+		case 4: //delete
 		{
 			ENTDatabase* database = get_database();
 			database->delete_saved_vehicle(activeSavedVehicleIndex);
@@ -6099,25 +5605,25 @@ bool process_savedveh_slot_menu(int slot){
 		MenuItem<int> *item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 1;
-		item->caption = "生成";
+		item->caption = "Spawn";
 		menuItems.push_back(item);
 
 		item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 2;
-		item->caption = "用当前内容覆盖";
+		item->caption = "Overwrite With Current";
 		menuItems.push_back(item);
 
 		item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 3;
-		item->caption = "重命名";
+		item->caption = "Rename";
 		menuItems.push_back(item);
 
 		item = new MenuItem<int>();
 		item->isLeaf = true;
 		item->value = 4;
-		item->caption = "删除 ";
+		item->caption = "Delete";
 		menuItems.push_back(item);
 
 		/*item = new MenuItem<int>();
@@ -6144,24 +5650,24 @@ bool process_savedveh_sort_menu(){
 	int method = 0;
 
 	MenuItem<int> *item = new MenuItem<int>();
-	item->caption = "按保存的顺序 (默认)";
+	item->caption = "By Save Order (Default)";
 	item->value = method++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "按保存的名称";
+	item->caption = "By Saved Name";
 	item->value = method++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
 	item = new MenuItem<int>();
-	item->caption = "按车辆类别, 然后按保存的名称";
+	item->caption = "By Class, then Saved Name";
 	item->value = method++;
 	item->isLeaf = true;
 	menuItems.push_back(item);
 
-	return draw_generic_menu<int>(menuItems, nullptr, "排序已保存的车辆", onconfirm_savedveh_sort_menu, nullptr, nullptr, vehicle_save_sort_menu_interrupt);
+	return draw_generic_menu<int>(menuItems, nullptr, "Sort Saved Vehicles List", onconfirm_savedveh_sort_menu, nullptr, nullptr, vehicle_save_sort_menu_interrupt);
 }
 
 void save_current_vehicle(int slot){
@@ -6174,43 +5680,15 @@ void save_current_vehicle(int slot){
 
 			std::ostringstream ss;
 			
-			Hash currVehModelS = ENTITY::GET_ENTITY_MODEL(veh);
+			Hash currVehModelS = ENTITY::GET_ENTITY_MODEL(PED::GET_VEHICLE_PED_IS_USING(PLAYER::PLAYER_PED_ID()));
 			if (slot == -1 && STREAMING::IS_MODEL_IN_CDIMAGE(currVehModelS) && STREAMING::IS_MODEL_A_VEHICLE(currVehModelS) && STREAMING::IS_MODEL_VALID(currVehModelS)) {
-				// 获取车辆名称 - 优先级：XML名称 > 游戏内置名称 > 模型名称
-				std::string displayName;
 				
-				// 1. 尝试从XML获取名称
-				char* modelName = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(currVehModelS);
-				std::string modelNameStr = modelName;
-				
-				// 检查此车辆是否来自外置XML
-				for (const auto& cat : g_CustomVehicleCategories) {
-					const auto it = g_CustomVehicles.find(cat);
-					if (it != g_CustomVehicles.end()) {
-						for (const auto& entry : it->second) {
-							if (GAMEPLAY::GET_HASH_KEY((char*)entry.first.c_str()) == currVehModelS && !entry.second.empty()) {
-								displayName = entry.second;
-								break;
-							}
-						}
-					}
-					if (!displayName.empty()) break;
-				}
-				
-				// 2. 如果XML中没有，尝试获取游戏内置名称
-				if (displayName.empty()) {
-					displayName = UI::_GET_LABEL_TEXT(modelName);
-				}
-				
-				// 3. 如果仍然没有，使用模型名称
-				if (displayName.empty() || displayName == "NULL") {
-					displayName = modelNameStr;
-				}
-				
+				char *name = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(currVehModelS);
+				std::string displayName = UI::_GET_LABEL_TEXT(name);
 				ss << displayName;
 			}
-			else if (slot == -1) {
-				ss << "已保存车辆 " << (lastKnownSavedVehicleCount + 1);
+			if (slot == -1 && !STREAMING::IS_MODEL_IN_CDIMAGE(currVehModelS)) { // && !STREAMING::IS_MODEL_A_VEHICLE(currVehModelS) && !STREAMING::IS_MODEL_VALID(currVehModelS)
+				ss << "Saved Vehicle " << (lastKnownSavedVehicleCount + 1);
 			}
 			if(slot != -1){
 				ss << activeSavedVehicleSlotName;
@@ -6218,21 +5696,21 @@ void save_current_vehicle(int slot){
 						
 			auto existingText = ss.str();
 			keyboard_on_screen_already = true;
-			curr_message = "输入保存名称"; // 保存一辆车
-			std::string result = show_keyboard("手动输入名称", (char*) existingText.c_str());
+			curr_message = "Enter a save name:"; // save a vehicle
+			std::string result = show_keyboard("Enter Name Manually", (char*) existingText.c_str());
 			if(!result.empty()){
 				ENTDatabase* database = get_database();
 				if(database->save_vehicle(veh, result, slot)){
-					set_status_text("车辆保存成功！");
+					set_status_text("Vehicle saved");
 					activeSavedVehicleSlotName = result;
 				}
 				else{
-					set_status_text("保存失败了！");
+					set_status_text("Save error");
 				}
 			}
 		}
 		else{
-			set_status_text("玩家不在车辆中！");
+			set_status_text("Player isn't in a vehicle");
 		}
 	}
 }
@@ -6271,12 +5749,12 @@ bool process_savedveh_menu(){
 		MenuItem<int> *item = new MenuItem<int>();
 		item->isLeaf = false;
 		item->value = -1;
-		item->caption = "创建新的车辆存档";
+		item->caption = "Create New Vehicle Save";
 		item->sortval = -2;
 		menuItems.push_back(item);
 
 		item = new MenuItem<int>();
-		item->caption = "排序已保存的车辆";
+		item->caption = "Sort Saved Vehicles";
 		item->value = -2;
 		item->isLeaf = false;
 		item->sortval = -1;
@@ -6327,7 +5805,7 @@ bool process_savedveh_menu(){
 				break;
 		}
 
-		draw_generic_menu<int>(menuItems, 0, "保存的车辆", onconfirm_savedveh_menu, NULL, NULL, vehicle_save_menu_interrupt);
+		draw_generic_menu<int>(menuItems, 0, "Saved Vehicles", onconfirm_savedveh_menu, NULL, NULL, vehicle_save_menu_interrupt);
 
 		for(std::vector<SavedVehicleDBRow*>::iterator it = savedVehs.begin(); it != savedVehs.end(); ++it){
 			delete (*it);
@@ -7116,38 +6594,25 @@ MenuItemImage* vehicle_image_preview_finder(MenuItem<int> choice){
 		return NULL;
 	}
 
-	// 首先检查自定义预览图（从XML加载）
-	auto it = g_CustomVehicleImages.find(choice.value);
-	if (it != g_CustomVehicleImages.end()) {
-		MenuItemImage* image = new MenuItemImage();
-		image->dict = const_cast<char*>(it->second.first.c_str());
-		image->name = const_cast<char*>(it->second.second.c_str());
-		return image;
-	}
-
-	// 然后检查内置预览图
-	for (const VehicleImage& vimg : ALL_VEH_IMAGES) {
-		if (vimg.modelName == choice.value) {
+	for each (VehicleImage vimg in ALL_VEH_IMAGES){
+		if(vimg.modelName == choice.value){
 			MenuItemImage* image = new MenuItemImage();
 			image->dict = vimg.dict;
-			if (image->is_local()) {
+			if(image->is_local()){
 				image->localID = vimg.localID;
-			} else {
+			}
+			else{
 				image->name = vimg.imgName;
 			}
 			return image;
 		}
 	}
 
-	// 获取模型原始名称（不本地化）
-	const char* modelName = VEHICLE::GET_DISPLAY_NAME_FROM_VEHICLE_MODEL(choice.value);
-
 	std::ostringstream ss;
-	ss << "找不到车辆预览图, 模型名： " << modelName;
+	ss << "Couldn't find preview for " << choice.value;
 	write_text_to_log_file(ss.str());
 	return NULL;
 }
-
 /* //Legacy code. Replaced with streaming the texture in from a custom texture file
 void unpack_veh_preview(char* model, int resRef, std::string bitmapName){
 	WAIT(0);
@@ -7215,11 +6680,8 @@ void unpack_veh_preview(char* model, int resRef, std::string bitmapName){
 */
 
 void init_vehicle_feature(){
-	//复制所有游戏内图像
+	//copy all the ingame images
 	ALL_VEH_IMAGES.insert(ALL_VEH_IMAGES.end(), INGAME_VEH_IMAGES.begin(), INGAME_VEH_IMAGES.end());
-	
-	// 加载自定义车辆预览图
-	ensure_custom_vehicle_previews_loaded();
 }
 
 void fix_vehicle(){
@@ -7243,12 +6705,12 @@ void fix_vehicle(){
 			VEHICLE::SET_VEHICLE_ENGINE_CAN_DEGRADE(veh, false);
 			VEHICLE::SET_VEHICLE_ENGINE_ON(veh, true, true, false);
 
-			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(veh, 1, false); // 左转向灯
-			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(veh, 0, false); // 右转向灯
+			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(veh, 1, false); // left signal 
+			VEHICLE::SET_VEHICLE_INDICATOR_LIGHTS(veh, 0, false); // right signal	
 
 			repairing_engine = true;
 
-			set_status_text("车辆已修复！");
+			set_status_text("Vehicle repaired");
 		}
 	}
 }
@@ -7261,7 +6723,7 @@ void clean_vehicle(){
 		if(PED::IS_PED_IN_ANY_VEHICLE(playerPed, 0)){
 			VEHICLE::SET_VEHICLE_DIRT_LEVEL(PED::GET_VEHICLE_PED_IS_USING(playerPed), 0);
 
-			set_status_text("车辆已清洁！");
+			set_status_text("Vehicle cleaned");
 		}
 	}
 }

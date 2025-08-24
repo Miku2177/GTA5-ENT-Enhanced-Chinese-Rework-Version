@@ -58,24 +58,24 @@ const std::map<int, std::string> ENTColor::colsVarsReverse({
 });
 
 const std::string ENTColor::colsCaptions[12] = {
-	"标题文本",
-	"标题框",
-	"项目文本",
-	"项目框",
-	"活动项目文本",
-	"活动项目框",
-	"锁定的列表项",
-	"解锁的列表项",
-	"实心的通缉星",
-	"空心的通缉星",
-	"子菜单存在时的符号",
-	"车辆预览图像边框"
+	"Title Text",
+	"Title Box",
+	"Item Text",
+	"Item Box",
+	"Active Item Text",
+	"Active Item Box",
+	"Locked List Item",
+	"Unlocked List Item",
+	"Filled Wanted Star",
+	"Empty Wanted Star",
+	"Symbol When Sub-Menu Exists",
+	"Preview Image Borders"
 },
 ENTColor::colsCompCaptions[4] = {
-	"红色",
-	"绿色",
-	"蓝色",
-	"透明度 (不透明度)"
+	"Red",
+	"Green",
+	"Blue",
+	"Alpha (Opacity)"
 };
 
 const int ENTColor::colsVarsNum = ENTColor::colsVars.size();

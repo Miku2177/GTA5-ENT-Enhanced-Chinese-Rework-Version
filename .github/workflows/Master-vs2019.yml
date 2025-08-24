@@ -1,10 +1,8 @@
-name: VS2022版本环境构建-副分支
+name: Master-vs2019
 
 on:
   push:
-    branches-ignore:
-      - main
-      - master
+    branches: [ "main", "master" ]
 
 env:
   SOLUTION_FILE_PATH: ./EnhancedNativeTrainer.sln
@@ -15,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-2022
+    runs-on: windows-2019
 
     steps:
     - uses: actions/checkout@v3
@@ -25,7 +23,7 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.1
       with:
-        vs-version: '[17.0, 18.0)'
+        vs-version: '16.0'
 
     - name: Build
       run: msbuild ${{env.SOLUTION_FILE_PATH}} /p:Configuration=${{env.BUILD_CONFIGURATION}}
@@ -44,6 +42,6 @@ jobs:
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: EnhancedNativeTrainer [VS2022-Release-2]
+        name: EnhancedNativeTrainer 2019
         path: |
           EnhancedNativeTrainer/bin/Release/
