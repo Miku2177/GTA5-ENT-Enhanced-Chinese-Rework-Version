@@ -1244,13 +1244,25 @@ bool draw_generic_menu(MenuParameters<T> params){
 				int screen_w, screen_h; // 这段代码用于计算游戏内，车辆预览图的坐标。
 				GRAPHICS::GET_SCREEN_RESOLUTION(&screen_w, &screen_h);
 
+				// 计算预览图的实际宽度（像素）
+				float imageWidthPx;
+				if(previewResolutionScale > 0.0f) {
+					// 使用指定的分辨率比例
+					imageWidthPx = 256.0f * screen_w / previewResolutionScale;
+				} else {
+					// 自适应模式：根据当前屏幕分辨率自动适配
+					imageWidthPx = 256.0f; // 保持固定像素尺寸，不随分辨率缩放
+				}
+
 				float lineXPx;
 				// 判断菜单左侧偏移是否大于预览图左右判断依据，自动切换预览图显示位置
 				if(menuLeftOffset > previewPositionThreshold) {
 					// 菜单在右侧，预览图显示在左侧
-					lineXPx = menuLeftOffset - (256.0f * screen_w / previewResolutionScale) - previewSpacing;
+					// 确保固定间距：菜单左边距 - 固定间距 - 图片宽度
+					lineXPx = menuLeftOffset - previewSpacing - imageWidthPx;
 				} else {
 					// 菜单在左侧，预览图显示在右侧
+					// 确保固定间距：菜单右边距 + 固定间距
 					lineXPx = menuLeftOffset + menuWidth + previewSpacing;
 				}
 				float lineXGame = lineXPx / (float) screen_w;

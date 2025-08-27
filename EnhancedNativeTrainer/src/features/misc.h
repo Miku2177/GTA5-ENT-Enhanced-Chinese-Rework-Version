@@ -179,8 +179,8 @@ extern int PreviewPositionThresholdIndex;
 extern bool PreviewPositionThresholdChanged;
 
 // 预览图分辨率适配值 - 默认 1920.0f
-const std::vector<std::string> MISC_PREVIEW_RESOLUTION_SCALE_CAPTIONS{ "默认 (1080P)", "2560 (2k)", "3840 (4K)", "1760", "1680", "1600", "1440", "1366", "1280", "2816", "3072", "3200", "3328",  };
-const float MISC_PREVIEW_RESOLUTION_SCALE_VALUES[] = { 1920.0f, 2560.0f, 3840.0f, 1760.0f, 1680.0f, 1600.0f, 1440.0f, 1366.0f, 1280.0f, 2816.0f, 3072.0f, 3200.0f, 3328.0f };
+const std::vector<std::string> MISC_PREVIEW_RESOLUTION_SCALE_CAPTIONS{ "默认 (1080P)", "自适应", "2560 (2k)", "3840 (4K)", "1760", "1680", "1600", "1440", "1366", "1280", "2816", "3072", "3200", "3328",  };
+const float MISC_PREVIEW_RESOLUTION_SCALE_VALUES[] = { 1920.0f, 0.0f, 2560.0f, 3840.0f, 1760.0f, 1680.0f, 1600.0f, 1440.0f, 1366.0f, 1280.0f, 2816.0f, 3072.0f, 3200.0f, 3328.0f };
 const int PREVIEW_RESOLUTION_SCALE_DEFAULT_INDEX = 0;
 extern int PreviewResolutionScaleIndex;
 extern bool PreviewResolutionScaleChanged;
